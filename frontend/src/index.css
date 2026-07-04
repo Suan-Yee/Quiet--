@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-bg: #FAF7F0;
+  --color-card: #FFFFFF;
+  --color-card-elevated: #FFFDF9;
+  --color-text: #1F2933;
+  --color-secondary: #6B7280;
+  --color-muted: #6B7280;
+  --color-border: #E8E1D8;
+  --color-border-soft: #EFE7DC;
+  --color-accent: #FF6719;
+  --color-accent-hover: #E85D16;
+  --color-soft-accent: #FFF1E8;
+  --color-input: #FFFFFF;
+  font-synthesis: none;
+  font-family: "Inter", system-ui, sans-serif;
+  background: #FAF7F0;
+  color: #1F2933;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #FAF7F0;
+}
+
+html.dark {
+  --color-bg: #17130F;
+  --color-card: #211B16;
+  --color-card-elevated: #2A221B;
+  --color-text: #F5EFE7;
+  --color-secondary: #B8AEA3;
+  --color-muted: #8F8478;
+  --color-border: #3A3027;
+  --color-border-soft: #4A3D32;
+  --color-accent: #FF7A2F;
+  --color-accent-hover: #FF8B4A;
+  --color-soft-accent: #3A2116;
+  --color-input: #1D1813;
+  background: #17130F;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #FAF7F0;
+  color: #1F2933;
+}
+
+.dark body {
+  background: #17130F;
+  color: #F5EFE7;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.font-reading {
+  font-family: "Merriweather", Georgia, serif;
+}
+
+.theme-scrollbar {
+  scrollbar-color: #EBCAB8 #FFFDF9;
+  scrollbar-width: thin;
+}
+
+.theme-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-track {
+  background: #FFFDF9;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb {
+  background: #EBCAB8;
+  border: 2px solid #FFFDF9;
+  border-radius: 999px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FF6719;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #A8A29A;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h2 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 2rem 0 1rem;
+}
+
+.ProseMirror h3 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.75rem 0 0.75rem;
+}
+
+.ProseMirror p {
+  margin: 1.25rem 0;
+}
+
+.ProseMirror blockquote {
+  background: #FFFDF9;
+  border-left: 4px solid #EBCAB8;
+  font-style: italic;
+  margin: 2rem 0;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgb(31 41 51 / 0.05);
+}
+
+.dark .ProseMirror blockquote {
+  background: #2A221B;
+  border-left-color: #4A3D32;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror ul {
+  list-style: disc;
+}
+
+.ProseMirror ol {
+  list-style: decimal;
+}
+
+.ProseMirror hr {
+  border: 0;
+  border-top: 1px solid #E8E1D8;
+  margin: 2rem 0;
+}
+
+.dark .ProseMirror hr {
+  border-top-color: #3A3027;
+}
+
+.ProseMirror mark {
+  background: #FFF1E8;
+  border-radius: 0.25rem;
+  color: #1F2933;
+  padding: 0 0.2rem;
+}
+
+.dark .ProseMirror mark {
+  background: #3A2116;
+  color: #F5EFE7;
+}
+
+.ProseMirror img {
+  border: 1px solid #E8E1D8;
+  border-radius: 1rem;
+  display: block;
+  margin: 2rem 0;
+  max-height: 24rem;
+  object-fit: cover;
+  width: 100%;
+}
+
+.dark .ProseMirror img {
+  border-color: #3A3027;
+}

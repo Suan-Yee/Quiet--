@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" fill="none">
+  <rect width="1600" height="1200" fill="#FAF7F0"/>
+  <rect width="1600" height="1200" fill="url(#warmWash)" opacity="0.86"/>
+  <g filter="url(#softBlur)">
+    <ellipse cx="1215" cy="214" rx="390" ry="270" fill="#FF6719" opacity="0.16"/>
+    <ellipse cx="240" cy="806" rx="355" ry="260" fill="#FF6719" opacity="0.12"/>
+    <ellipse cx="822" cy="552" rx="430" ry="305" fill="#FFF1E8" opacity="0.96"/>
+    <ellipse cx="1430" cy="900" rx="300" ry="220" fill="#B85C2E" opacity="0.055"/>
+  </g>
+  <g opacity="0.86">
+    <path d="M-90 198C180 86 406 102 584 246C746 377 891 401 1076 308C1264 214 1442 176 1690 244" stroke="#E8E1D8" stroke-width="2.6"/>
+    <path d="M-110 286C132 180 360 174 560 298C757 420 922 454 1124 354C1324 255 1480 244 1695 314" stroke="#EFE7DC" stroke-width="1.8"/>
+    <path d="M-110 738C127 642 361 626 572 728C782 830 970 844 1162 747C1363 645 1498 646 1718 735" stroke="#E8E1D8" stroke-width="2.4"/>
+    <path d="M-60 1025C180 910 405 904 622 1016C820 1118 1001 1122 1217 1011C1398 918 1535 928 1660 998" stroke="#EFE7DC" stroke-width="2"/>
+  </g>
+  <g opacity="0.48">
+    <path d="M1018 108C938 238 944 382 1030 492C1123 611 1108 744 1000 872" stroke="#FF6719" stroke-opacity="0.18" stroke-width="22" stroke-linecap="round"/>
+    <path d="M368 172C484 260 538 362 516 480C494 599 558 692 707 766" stroke="#FF6719" stroke-opacity="0.13" stroke-width="16" stroke-linecap="round"/>
+    <path d="M1322 566C1208 630 1160 730 1190 862C1217 980 1174 1062 1058 1114" stroke="#B85C2E" stroke-opacity="0.08" stroke-width="18" stroke-linecap="round"/>
+  </g>
+  <g opacity="0.34">
+    <path d="M1238 352C1310 326 1376 333 1424 380C1476 431 1486 501 1450 572C1417 637 1348 674 1278 660C1205 646 1158 588 1158 514C1158 441 1193 368 1238 352Z" stroke="#FF6719" stroke-opacity="0.26" stroke-width="2"/>
+    <path d="M1256 402C1308 382 1357 388 1392 423C1429 459 1436 511 1410 562C1386 609 1336 636 1285 626C1232 616 1198 574 1198 520C1198 467 1223 414 1256 402Z" stroke="#FF6719" stroke-opacity="0.2" stroke-width="2"/>
+    <path d="M190 628C262 599 338 612 396 665C457 720 475 798 440 866C404 936 326 974 250 956C173 938 124 876 128 798C132 722 152 644 190 628Z" stroke="#FF6719" stroke-opacity="0.18" stroke-width="2"/>
+    <path d="M226 690C275 670 328 679 367 715C409 753 421 806 397 853C373 901 320 927 268 915C216 903 182 860 185 807C188 755 200 701 226 690Z" stroke="#FF6719" stroke-opacity="0.14" stroke-width="2"/>
+  </g>
+  <rect width="1600" height="1200" fill="url(#paperGrain)" opacity="0.2"/>
+  <defs>
+    <linearGradient id="warmWash" x1="205" y1="0" x2="1370" y2="1175" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF1E8"/>
+      <stop offset="0.45" stop-color="#FAF7F0"/>
+      <stop offset="1" stop-color="#EFE7DC"/>
+    </linearGradient>
+    <filter id="softBlur" x="-180" y="-160" width="1960" height="1520" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="62"/>
+    </filter>
+    <filter id="paperNoise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence baseFrequency="0.82" numOctaves="3" seed="19" type="fractalNoise"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.3"/>
+      </feComponentTransfer>
+    </filter>
+    <pattern id="paperGrain" width="180" height="180" patternUnits="userSpaceOnUse">
+      <rect width="180" height="180" fill="#FAF7F0"/>
+      <rect width="180" height="180" filter="url(#paperNoise)" opacity="0.38"/>
+    </pattern>
+  </defs>
+</svg>
