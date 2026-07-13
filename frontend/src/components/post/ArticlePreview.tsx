@@ -4,6 +4,7 @@ import TiptapContentRenderer from './TiptapContentRenderer'
 import EmptyPreviewState from './EmptyPreviewState'
 import type { PreviewMode } from './PreviewModeSwitch'
 import type { PostDraft } from '../../types/post'
+import { formatPostDate, formatReadTime, getPrimaryTopic } from '../../utils/postDisplay'
 
 type ArticlePreviewProps = {
   draft: PostDraft
@@ -11,7 +12,7 @@ type ArticlePreviewProps = {
 }
 
 function hasBodyContent(draft: PostDraft) {
-  return draft.content.content?.some((node) => {
+  return draft.contentJson.content?.some((node) => {
     if (node.type === 'paragraph') {
       return Boolean(node.content?.length)
     }
@@ -23,6 +24,7 @@ function hasBodyContent(draft: PostDraft) {
 function ArticlePreview({ draft, mode }: ArticlePreviewProps) {
   const hasCardPreview = Boolean(draft.title || draft.excerpt || draft.coverImage)
   const hasDetailPreview = Boolean(draft.title || draft.excerpt || draft.coverImage || hasBodyContent(draft))
+  const primaryTopic = getPrimaryTopic(draft.topics)
 
   if (mode === 'card' && !hasCardPreview) {
     return (
@@ -46,17 +48,17 @@ function ArticlePreview({ draft, mode }: ArticlePreviewProps) {
           <header className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3.5">
               <img
-                src={draft.author.avatar}
+                src={draft.author.profileImage}
                 alt=""
                 className="h-11 w-11 rounded-full object-cover ring-1 ring-[#E8DED2]"
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[#1F2933]">{draft.author.name}</p>
                 <p className="mt-0.5 truncate text-xs font-medium text-[#6B7280]">
-                  {draft.author.description}
+                  {draft.author.authorDescription}
                 </p>
                 <p className="mt-0.5 text-xs font-medium text-[#6B7280]">
-                  {draft.createdAt} - {draft.readTime}
+                  {formatPostDate(draft.createdAt)} - {formatReadTime(draft.readTime)}
                 </p>
               </div>
             </div>
@@ -77,7 +79,7 @@ function ArticlePreview({ draft, mode }: ArticlePreviewProps) {
             <div>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-[#E8DED2] bg-[#FFFDF9] px-3 py-1 text-xs font-semibold text-[#6B7280]">
-                  {draft.category}
+                  {primaryTopic}
                 </span>
               </div>
               <h2 className="font-reading text-[1.6rem] font-bold leading-snug text-[#1F2933]">
@@ -133,86 +135,86 @@ function ArticlePreview({ draft, mode }: ArticlePreviewProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[140px_minmax(0,1fr)_56px]">
-      <aside className="hidden xl:block">
-        <div className="sticky top-28 rounded-2xl border border-[#E8E1D8] bg-white/70 p-4 shadow-sm shadow-[#1F2933]/5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
+    <div className="grid gap-6">
+      <aside className="hidden">
+        <div className="sticky top-28 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 p-4 shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             Reading
           </p>
           <div className="mt-4 flex items-center gap-3">
             <img
-              src={draft.author.avatar}
+              src={draft.author.profileImage}
               alt=""
-              className="h-9 w-9 rounded-full object-cover ring-1 ring-[#E8E1D8]"
+              className="h-9 w-9 rounded-full object-cover ring-1 ring-[var(--color-border)]"
             />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#1F2933]">{draft.author.name}</p>
-              <p className="text-xs font-medium text-[#6B7280]">{draft.readTime}</p>
+              <p className="truncate text-sm font-semibold text-[var(--color-text)]">{draft.author.name}</p>
+              <p className="text-xs font-medium text-[var(--color-muted)]">{formatReadTime(draft.readTime)}</p>
             </div>
           </div>
         </div>
       </aside>
 
       <article className="min-w-0">
-      <header className="rounded-3xl border border-[#E8E1D8] bg-white p-6 shadow-sm shadow-[#1F2933]/5 sm:p-8">
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[#E8E1D8] bg-[#FFFDF9] px-3 py-1 text-xs font-semibold text-[#6B7280]">
-            {draft.category}
+        <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
+          <header className="p-6 pb-4 sm:p-8 sm:pb-5">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] px-3 py-1 text-xs font-semibold text-[var(--color-secondary)]">
+                {primaryTopic}
+              </span>
+            </div>
+            <h1 className="mt-4 font-reading text-3xl font-bold leading-tight text-[var(--color-text)] sm:text-4xl">
+              {draft.title || 'Untitled draft'}
+            </h1>
+            <p className="mt-4 text-base leading-7 text-[var(--color-secondary)] sm:text-lg sm:leading-8">
+              {draft.excerpt || 'Your subtitle or excerpt will appear here.'}
+            </p>
+
+            <div className="mt-6 flex items-center gap-3 border-t border-[var(--color-border)] pt-5">
+              <img
+                src={draft.author.profileImage}
+                alt=""
+                className="h-11 w-11 rounded-full object-cover ring-1 ring-[var(--color-border)]"
+              />
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-text)]">{draft.author.name}</p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
+                  {formatPostDate(draft.createdAt)} - {formatReadTime(draft.readTime)}
+                </p>
+              </div>
+            </div>
+
+            {draft.coverImage ? (
+              <div className="mx-auto mt-6 max-w-[640px] overflow-hidden rounded-2xl bg-[var(--color-bg)]">
+                <img src={draft.coverImage} alt="" className="max-h-[320px] w-full object-cover" />
+              </div>
+            ) : null}
+          </header>
+
+          <div className="px-6 pb-2 sm:px-8">
+            <TiptapContentRenderer content={draft.contentJson} />
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm font-medium text-[var(--color-secondary)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
+          <span className="inline-flex h-9 items-center gap-2 rounded-full px-3">
+            <Heart size={17} aria-hidden="true" />
+            {draft.reactionCount}
+          </span>
+          <span className="inline-flex h-9 items-center gap-2 rounded-full px-3">
+            <MessageCircle size={17} aria-hidden="true" />
+            {draft.commentCount}
+          </span>
+          <span className="inline-flex h-9 items-center justify-center rounded-full px-3">
+            <Bookmark size={17} aria-hidden="true" />
           </span>
         </div>
-        <h1 className="mt-4 font-reading text-3xl font-bold leading-tight text-[#1F2933] sm:text-5xl">
-          {draft.title || 'Untitled draft'}
-        </h1>
-        <p className="mt-5 text-lg leading-8 text-[#6B7280]">
-          {draft.excerpt || 'Your subtitle or excerpt will appear here.'}
-        </p>
-
-        <div className="mt-7 grid gap-5 border-t border-[#E8E1D8] pt-5 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
-          <div className="flex items-center gap-3">
-            <img
-              src={draft.author.avatar}
-              alt=""
-              className="h-12 w-12 rounded-full object-cover ring-1 ring-[#E8E1D8]"
-            />
-            <div>
-              <p className="text-sm font-semibold text-[#1F2933]">{draft.author.name}</p>
-              <p className="mt-0.5 text-xs font-medium text-[#6B7280]">
-                {draft.createdAt} - {draft.readTime}
-              </p>
-            </div>
-          </div>
-
-          {draft.coverImage ? (
-            <div className="overflow-hidden rounded-2xl border border-[#E8E1D8] bg-[#FAF7F0] sm:h-28 sm:w-[180px]">
-              <img src={draft.coverImage} alt="" className="h-40 w-full object-cover sm:h-full" />
-            </div>
-          ) : null}
-        </div>
-      </header>
-
-      <div className="rounded-b-3xl border-x border-b border-[#E8E1D8] bg-white px-6 pb-2 shadow-sm shadow-[#1F2933]/5 sm:px-8">
-        <TiptapContentRenderer content={draft.content} />
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[#E8E1D8] bg-white px-4 py-3 text-sm font-medium text-[#6B7280] shadow-sm shadow-[#1F2933]/5">
-        <span className="inline-flex h-9 items-center gap-2 rounded-full px-3">
-          <Heart size={17} aria-hidden="true" />
-          {draft.reactionCount}
-        </span>
-        <span className="inline-flex h-9 items-center gap-2 rounded-full px-3">
-          <MessageCircle size={17} aria-hidden="true" />
-          {draft.commentCount}
-        </span>
-        <span className="inline-flex h-9 items-center justify-center rounded-full px-3">
-          <Bookmark size={17} aria-hidden="true" />
-        </span>
-      </div>
       </article>
 
-      <aside className="hidden xl:block">
+      <aside className="hidden">
         <button
           type="button"
-          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#FF6719] bg-white text-[#FF6719] shadow-lg shadow-[#1F2933]/10"
+          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-card)] text-[var(--color-accent)] shadow-lg shadow-[#1F2933]/10 dark:shadow-black/20"
           aria-label="Comments preview"
         >
           <MessageCircle size={19} aria-hidden="true" />

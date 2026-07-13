@@ -1,37 +1,38 @@
+import type { PostStatus } from '../../types/post'
 import Button from '../common/Button'
 import CustomDropdown from '../common/CustomDropdown'
 import ImageUploader from './ImageUploader'
 
 type PublishingSettingsProps = {
-  status: 'Draft' | 'Published'
-  category: string
+  status: PostStatus
+  topic: string
   coverImage: string
-  onStatusChange: (status: 'Draft' | 'Published') => void
-  onCategoryChange: (category: string) => void
+  onStatusChange: (status: PostStatus) => void
+  onTopicChange: (topic: string) => void
   onCoverImageChange: (file: File) => void
   onCoverImageRemove: () => void
   onPublish: () => void
   onSaveDraft: () => void
 }
 
-const categoryOptions = ['Essay', 'Writing', 'Technology', 'Culture', 'Design', 'Books', 'Startups'].map(
-  (category) => ({
-    label: category,
-    value: category,
+const topicOptions = ['Essay', 'Writing', 'Technology', 'Culture', 'Design', 'Books', 'Startups'].map(
+  (topic) => ({
+    label: topic,
+    value: topic,
   }),
 )
 
 const statusOptions = [
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Published', value: 'Published' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Published', value: 'published' },
 ]
 
 function PublishingSettings({
   status,
-  category,
+  topic,
   coverImage,
   onStatusChange,
-  onCategoryChange,
+  onTopicChange,
   onCoverImageChange,
   onCoverImageRemove,
   onPublish,
@@ -46,17 +47,17 @@ function PublishingSettings({
 
       <div className="mt-5 space-y-5">
         <CustomDropdown
-          label="Category"
-          value={category}
-          options={categoryOptions}
-          onChange={onCategoryChange}
+          label="Topic"
+          value={topic}
+          options={topicOptions}
+          onChange={onTopicChange}
         />
 
         <CustomDropdown
           label="Status"
           value={status}
           options={statusOptions}
-          onChange={(value) => onStatusChange(value as 'Draft' | 'Published')}
+          onChange={(value) => onStatusChange(value as PostStatus)}
         />
 
         <ImageUploader

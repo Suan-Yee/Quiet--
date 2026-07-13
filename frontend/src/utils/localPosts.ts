@@ -1,5 +1,4 @@
-import type { MockPost } from '../data/mockPosts'
-import type { PostDraft } from '../types/post'
+import type { MockPost, PostDraft } from '../types/post'
 
 const LOCAL_POSTS_KEY = 'quiet-pages-local-posts'
 const LOCAL_DRAFT_KEY = 'quiet-pages-local-draft'

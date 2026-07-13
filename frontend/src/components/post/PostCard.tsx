@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { ArrowRight, Bookmark, Heart } from 'lucide-react'
 import { NavLink } from 'react-router'
 import Card from '../common/Card'
-import type { MockPost } from '../../data/mockPosts'
+import type { MockPost } from '../../types/post'
 import { getPostInteraction, savePostBookmark, savePostReaction } from '../../utils/localInteractions'
+import { formatPostDate, formatReadTime, getPostPath, getPrimaryTopic } from '../../utils/postDisplay'
 import { getAuthorProfilePath } from '../../utils/profileLinks'
 
 type PostCardProps = {
@@ -15,6 +16,8 @@ function PostCard({ post }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(interaction.isReacted ?? post.isReacted)
   const [isBookmarked, setIsBookmarked] = useState(interaction.isBookmarked ?? post.isBookmarked)
   const authorProfilePath = getAuthorProfilePath(post.author.name)
+  const primaryTopic = getPrimaryTopic(post.topics)
+  const postPath = getPostPath(post)
 
   const reactionCount =
     post.reactionCount + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
@@ -42,7 +45,7 @@ function PostCard({ post }: PostCardProps) {
           <div className="flex min-w-0 items-center gap-3.5">
             <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
               <img
-                src={post.author.avatar}
+                src={post.author.profileImage}
                 alt=""
                 className="h-11 w-11 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
               />
@@ -58,10 +61,10 @@ function PostCard({ post }: PostCardProps) {
                 to={authorProfilePath}
                 className="mt-0.5 block truncate text-xs font-medium text-[var(--color-secondary)] transition hover:text-[var(--color-text)]"
               >
-                {post.authorDescription}
+                {post.author.authorDescription}
               </NavLink>
               <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
-                {post.date} - {post.readTime}
+                {formatPostDate(post.createdAt)} - {formatReadTime(post.readTime)}
               </p>
             </div>
           </div>
@@ -75,7 +78,7 @@ function PostCard({ post }: PostCardProps) {
 
         <div
           className={`mt-5 ${
-            post.image
+            post.coverImage
               ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_188px] md:items-start'
               : ''
           }`}
@@ -83,16 +86,16 @@ function PostCard({ post }: PostCardProps) {
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] px-3 py-1 text-xs font-semibold text-[var(--color-secondary)]">
-                {post.category}
+                {primaryTopic}
               </span>
             </div>
 
-            <NavLink to={`/posts/${post.id}`} className="block">
+            <NavLink to={postPath} className="block">
               <h2 className="font-reading text-[1.6rem] font-bold leading-snug text-[var(--color-text)] transition group-hover:text-[var(--color-text)]">
                 {post.title}
               </h2>
               <p className="mt-4 line-clamp-3 text-[0.98rem] leading-8 text-[var(--color-secondary)]">
-                {post.preview}
+                {post.excerpt}
               </p>
             </NavLink>
 
@@ -105,10 +108,10 @@ function PostCard({ post }: PostCardProps) {
             ) : null}
           </div>
 
-          {post.image ? (
+          {post.coverImage ? (
             <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] md:h-40 md:w-[188px]">
               <img
-                src={post.image}
+                src={post.coverImage}
                 alt=""
                 className="h-44 w-full object-cover transition duration-300 group-hover:scale-[1.02] md:h-full md:w-full"
               />
@@ -156,7 +159,7 @@ function PostCard({ post }: PostCardProps) {
           </div>
 
           <NavLink
-            to={`/posts/${post.id}`}
+            to={postPath}
             className="inline-flex h-8 items-center gap-1.5 text-sm font-semibold text-[var(--color-text)] transition hover:translate-x-0.5 hover:text-[var(--color-accent)]"
           >
             Read more

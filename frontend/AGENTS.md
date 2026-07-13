@@ -23,13 +23,25 @@ Frontend:
 - React Router
 - lucide-react
 
-Backend later:
-- Node.js
-- Express
-- MongoDB
-- Mongoose
-- JWT auth
-- bcrypt
+Backend:
+- Go
+- GORM
+- SQL database models
+- JWT-style auth middleware planned/placeholder
+
+The existing Go backend models are the data contract for frontend mock data.
+Even while the frontend uses local mock data, keep mock object shapes aligned with backend JSON fields.
+
+Important backend-aligned naming:
+- Use `excerpt`, not `preview`.
+- Use `coverImage`, not `image`.
+- Use `contentJson` for Tiptap JSON content.
+- Use `contentText` for extracted plain text.
+- Use `readTime` as a number of minutes, then format it in the UI.
+- Use lowercase post status values: `draft` and `published`.
+- Use `topics: Topic[]` instead of a single `category` field.
+- Use `author.profileImage` and `author.authorDescription`.
+- Keep UI-only fields such as `isReacted`, `isBookmarked`, `isFeatured`, and `quotePreview` clearly separated from backend core fields.
 
 For now, focus only on frontend unless the user asks for backend.
 
@@ -109,6 +121,7 @@ Use:
 - Clean file names
 - Simple state first
 - Mock data before backend connection
+- Mock data should match current backend model shapes
 - Clear component props
 - Organized folders
 

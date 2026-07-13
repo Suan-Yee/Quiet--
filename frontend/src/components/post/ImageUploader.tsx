@@ -10,6 +10,9 @@ function ImageUploader({ imageUrl, onImageChange, onImageRemove }: ImageUploader
   return (
     <div>
       <p className="text-sm font-semibold text-[var(--color-text)]">Cover image</p>
+      <p className="mt-1 text-xs leading-5 text-[var(--color-muted)]">
+        Used on post cards and previews. Add article images from the editor toolbar.
+      </p>
       <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-5 text-sm font-medium text-[var(--color-secondary)] transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)]">
         <Image size={17} aria-hidden="true" />
         <span>{imageUrl ? 'Replace image' : 'Choose image'}</span>

@@ -10,6 +10,7 @@ import { mockArticleBlocks } from '../data/mockArticleDetails'
 import { mockPosts } from '../data/mockPosts'
 import { getPostInteraction, savePostBookmark, savePostReaction } from '../utils/localInteractions'
 import { getLocalPosts } from '../utils/localPosts'
+import { formatPostDate, formatReadTime, getPrimaryTopic } from '../utils/postDisplay'
 import { getAuthorProfilePath } from '../utils/profileLinks'
 
 const mockComments: CommentItem[] = [
@@ -41,7 +42,7 @@ const mockComments: CommentItem[] = [
 
 function PostDetailPage() {
   const { postId } = useParams()
-  const post = [...getLocalPosts(), ...mockPosts].find((item) => item.id === postId)
+  const post = [...getLocalPosts(), ...mockPosts].find((item) => String(item.id) === postId)
   const interaction = post ? getPostInteraction(post.id) : {}
   const [isLiked, setIsLiked] = useState(interaction.isReacted ?? post?.isReacted ?? false)
   const [isBookmarked, setIsBookmarked] = useState(interaction.isBookmarked ?? post?.isBookmarked ?? false)
@@ -75,11 +76,12 @@ function PostDetailPage() {
   }
 
   const reactionCount =
-    post.reactions + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
+    post.reactionCount + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
   const authorProfilePath = getAuthorProfilePath(post.author.name)
+  const primaryTopic = getPrimaryTopic(post.topics)
   const desktopGridColumns = isCommentsOpen
-    ? 'xl:grid-cols-[200px_minmax(0,820px)_380px]'
-    : 'xl:grid-cols-[200px_820px_72px]'
+    ? 'xl:grid-cols-[200px_minmax(0,760px)_380px]'
+    : 'xl:grid-cols-[200px_760px_72px]'
 
   return (
     <div className="mx-auto w-full max-w-[1480px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
@@ -92,7 +94,7 @@ function PostDetailPage() {
             <div className="mt-4 flex items-center gap-3">
               <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
                 <img
-                  src={post.author.avatar}
+                  src={post.author.profileImage}
                   alt=""
                   className="h-10 w-10 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
                 />
@@ -104,13 +106,13 @@ function PostDetailPage() {
                 >
                   {post.author.name}
                 </NavLink>
-                <p className="text-xs font-medium text-[var(--color-muted)]">{post.readTime}</p>
+                <p className="text-xs font-medium text-[var(--color-muted)]">{formatReadTime(post.readTime)}</p>
               </div>
             </div>
             <div className="mt-5 space-y-3 border-t border-[var(--color-border)] pt-4 text-xs font-medium text-[var(--color-secondary)]">
-              <p>{post.date}</p>
+              <p>{formatPostDate(post.createdAt)}</p>
               <p>{reactionCount} reactions</p>
-              <p>{post.comments} responses</p>
+              <p>{post.commentCount} responses</p>
             </div>
             <NavLink
               to={authorProfilePath}
@@ -122,22 +124,24 @@ function PostDetailPage() {
         </aside>
 
         <article className="min-w-0">
-          <header className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10 sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              {post.category}
-            </p>
-            <h1 className="mt-4 font-reading text-3xl font-bold leading-tight text-[var(--color-text)] sm:text-5xl">
-              {post.title}
-            </h1>
-            <p className="mt-5 text-lg leading-8 text-[var(--color-secondary)]">{post.preview}</p>
+          <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
+            <header className="p-6 pb-4 sm:p-8 sm:pb-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+                {primaryTopic}
+              </p>
+              <h1 className="mt-4 font-reading text-3xl font-bold leading-tight text-[var(--color-text)] sm:text-4xl">
+                {post.title}
+              </h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-secondary)] sm:text-lg sm:leading-8">
+                {post.excerpt}
+              </p>
 
-            <div className="mt-7 grid gap-5 border-t border-[var(--color-border)] pt-5 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
-              <div className="flex items-center gap-3">
+              <div className="mt-6 flex items-center gap-3 border-t border-[var(--color-border)] pt-5">
                 <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
                   <img
-                    src={post.author.avatar}
+                    src={post.author.profileImage}
                     alt=""
-                    className="h-12 w-12 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
+                    className="h-11 w-11 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
                   />
                 </NavLink>
                 <div>
@@ -148,29 +152,29 @@ function PostDetailPage() {
                     {post.author.name}
                   </NavLink>
                   <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
-                    {post.date} - {post.readTime}
+                    {formatPostDate(post.createdAt)} - {formatReadTime(post.readTime)}
                   </p>
                 </div>
               </div>
 
-              {post.image ? (
-                <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] sm:h-28 sm:w-[180px]">
+              {post.coverImage ? (
+                <div className="mx-auto mt-6 max-w-[640px] overflow-hidden rounded-2xl bg-[var(--color-bg)]">
                   <img
-                    src={post.image}
+                    src={post.coverImage}
                     alt=""
-                    className="h-40 w-full object-cover sm:h-full sm:w-full"
+                    className="max-h-[320px] w-full object-cover"
                   />
                 </div>
               ) : null}
-            </div>
-          </header>
+            </header>
 
-          <div className="rounded-b-3xl border-x border-b border-[var(--color-border)] bg-[var(--color-card)] px-6 pb-2 shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10 sm:px-8">
-            {post.content ? (
-              <TiptapContentRenderer content={post.content} />
-            ) : (
-              <ArticleContent blocks={mockArticleBlocks} />
-            )}
+            <div className="px-6 pb-2 sm:px-8">
+              {post.contentJson ? (
+                <TiptapContentRenderer content={post.contentJson} />
+              ) : (
+                <ArticleContent blocks={mockArticleBlocks} />
+              )}
+            </div>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm font-medium text-[var(--color-secondary)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
@@ -203,7 +207,7 @@ function PostDetailPage() {
                 aria-label="Open comments"
               >
                 <MessageCircle size={17} aria-hidden="true" />
-                {post.comments}
+                {post.commentCount}
               </button>
 
               <button
@@ -235,7 +239,7 @@ function PostDetailPage() {
           </div>
 
           <section className="mt-8 xl:hidden">
-            <CommentsPanel comments={mockComments} responseCount={post.comments} />
+            <CommentsPanel comments={mockComments} responseCount={post.commentCount} />
           </section>
         </article>
 
@@ -244,7 +248,7 @@ function PostDetailPage() {
             {isCommentsOpen ? (
               <CommentsPanel
                 comments={mockComments}
-                responseCount={post.comments}
+                responseCount={post.commentCount}
                 isCloseable
                 onClose={() => setIsCommentsOpen(false)}
               />
@@ -253,7 +257,7 @@ function PostDetailPage() {
                 type="button"
                 onClick={() => setIsCommentsOpen(true)}
                 className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-card)] text-[var(--color-accent)] shadow-lg shadow-[#1F2933]/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--color-soft-accent)] hover:shadow-xl hover:shadow-[#FF6719]/20 dark:shadow-black/20"
-                aria-label={`Open comments, ${post.comments} responses`}
+                aria-label={`Open comments, ${post.commentCount} responses`}
               >
                 <MessageCircle size={22} aria-hidden="true" />
               </button>

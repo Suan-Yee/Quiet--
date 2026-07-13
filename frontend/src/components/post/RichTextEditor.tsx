@@ -20,7 +20,9 @@ function RichTextEditor({ content, onChange }: RichTextEditorProps) {
       Highlight.configure({
         multicolor: false,
       }),
-      Image,
+      Image.configure({
+        allowBase64: true,
+      }),
     ],
     content,
     editorProps: {

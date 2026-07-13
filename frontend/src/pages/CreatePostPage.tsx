@@ -7,9 +7,10 @@ import ArticlePreview from '../components/post/ArticlePreview'
 import Toast from '../components/common/Toast'
 import { emptyEditorContent } from '../data/mockTiptapContent'
 import { mockCurrentUser } from '../data/mockCurrentUser'
-import type { MockPost } from '../data/mockPosts'
-import type { PostDraft } from '../types/post'
+import { topics } from '../data/mockPosts'
+import type { MockPost, PostDraft, PostStatus, Topic } from '../types/post'
 import { getLocalDraft, saveLocalDraft, saveLocalPost } from '../utils/localPosts'
+import { getPrimaryTopic } from '../utils/postDisplay'
 
 type ToastState = {
   title: string
@@ -23,23 +24,28 @@ function CreatePostPage() {
   const [objectUrl, setObjectUrl] = useState('')
   const [toast, setToast] = useState<ToastState | null>(null)
   const [postDraft, setPostDraft] = useState<PostDraft>(() => getLocalDraft() ?? {
-    id: 'draft-post',
+    id: 0,
+    authorId: mockCurrentUser.id,
     title: '',
     excerpt: '',
-    category: 'Essay',
-    status: 'Draft',
+    contentText: '',
+    contentJson: emptyEditorContent,
     coverImage: '',
-    userProfile: mockCurrentUser,
-    author: mockCurrentUser,
-    createdAt: 'Today',
-    readTime: '1 min read',
+    coverImagePublicId: '',
+    status: 'draft',
+    visibility: 'public',
+    readTime: 1,
     reactionCount: 0,
     commentCount: 0,
+    bookmarkCount: 0,
+    topics: [topics[0]],
+    author: mockCurrentUser,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     isReacted: false,
     isBookmarked: false,
     isFeatured: false,
     quotePreview: '',
-    content: emptyEditorContent,
   })
 
   useEffect(() => {
@@ -97,7 +103,7 @@ function CreatePostPage() {
   }
 
   function hasArticleContent(draft: PostDraft) {
-    return draft.content.content?.some((node) => {
+    return draft.contentJson.content?.some((node) => {
       if (node.type === 'paragraph') {
         return node.content?.some((childNode) => Boolean(childNode.text?.trim()))
       }
@@ -127,48 +133,56 @@ function CreatePostPage() {
       }
     }
 
-    walk(draft.content)
+    walk(draft.contentJson)
 
     return textParts.join(' ')
   }
 
-  function buildPostId(title: string) {
-    const slug = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
+  function getTopicByName(topicName: string): Topic {
+    const existingTopic = topics.find((topic) => topic.name === topicName)
 
-    return `${slug || 'post'}-${Date.now()}`
+    return existingTopic ?? {
+      id: Date.now(),
+      name: topicName,
+      slug: topicName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      postCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
   }
 
-  function buildLocalPost(status: 'Draft' | 'Published'): MockPost {
+  function buildPostId() {
+    return Date.now()
+  }
+
+  function buildLocalPost(status: PostStatus): MockPost {
     const wordCount = getContentText(postDraft).split(/\s+/).filter(Boolean).length
     const readMinutes = Math.max(1, Math.ceil(wordCount / 220))
-    const id = status === 'Published' ? buildPostId(postDraft.title) : postDraft.id
+    const id = status === 'published' ? buildPostId() : postDraft.id
 
     return {
       id,
+      authorId: postDraft.authorId,
+      author: postDraft.author,
       title: postDraft.title.trim(),
-      preview: postDraft.excerpt.trim(),
-      category: postDraft.category,
-      authorDescription: postDraft.author.description,
-      author: {
-        name: postDraft.author.name,
-        avatar: postDraft.author.avatar,
-      },
-      date: postDraft.createdAt,
-      readTime: `${readMinutes} min read`,
-      image: postDraft.coverImage || undefined,
-      isFeatured: postDraft.isFeatured,
-      quotePreview: postDraft.quotePreview || undefined,
+      excerpt: postDraft.excerpt.trim(),
+      contentText: getContentText(postDraft),
+      contentJson: postDraft.contentJson,
+      coverImage: postDraft.coverImage,
+      coverImagePublicId: postDraft.coverImagePublicId,
+      status,
+      visibility: postDraft.visibility,
+      readTime: readMinutes,
       reactionCount: postDraft.reactionCount,
       commentCount: postDraft.commentCount,
+      bookmarkCount: postDraft.bookmarkCount,
+      topics: postDraft.topics,
+      createdAt: postDraft.createdAt,
+      updatedAt: new Date().toISOString(),
+      isFeatured: postDraft.isFeatured,
+      quotePreview: postDraft.quotePreview,
       isReacted: postDraft.isReacted,
       isBookmarked: postDraft.isBookmarked,
-      content: postDraft.content,
-      reactions: postDraft.reactionCount,
-      comments: postDraft.commentCount,
     }
   }
 
@@ -202,14 +216,14 @@ function CreatePostPage() {
       return
     }
 
-    const post = buildLocalPost('Published')
+    const post = buildLocalPost('published')
     saveLocalPost(post)
-    saveLocalDraft({ ...postDraft, id: post.id, status: 'Published' })
+    saveLocalDraft({ ...postDraft, id: post.id, status: 'published', updatedAt: post.updatedAt })
     navigate(`/posts/${post.id}`)
   }
 
   function handleSaveDraft() {
-    saveLocalDraft({ ...postDraft, status: 'Draft' })
+    saveLocalDraft({ ...postDraft, status: 'draft', updatedAt: new Date().toISOString() })
     setToast({
       title: 'Draft saved',
       messages: ['Your draft is saved locally on this device.'],
@@ -250,16 +264,19 @@ function CreatePostPage() {
 
             <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-[var(--color-border)] pt-5 text-sm font-medium text-[var(--color-secondary)]">
               <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)]">
-                {postDraft.category}
+                {getPrimaryTopic(postDraft.topics)}
               </span>
-              <span>{postDraft.status}</span>
+              <span>{postDraft.status === 'published' ? 'Published' : 'Draft'}</span>
             </div>
           </section>
 
           <div className="mt-7">
             <RichTextEditor
-              content={postDraft.content}
-              onChange={(content) => updateDraft({ content })}
+              content={postDraft.contentJson}
+              onChange={(contentJson) => updateDraft({
+                contentJson,
+                contentText: getContentText({ ...postDraft, contentJson }),
+              })}
             />
           </div>
 
@@ -290,10 +307,10 @@ function CreatePostPage() {
 
         <PublishingSettings
           status={postDraft.status}
-          category={postDraft.category}
+          topic={getPrimaryTopic(postDraft.topics)}
           coverImage={postDraft.coverImage}
           onStatusChange={(status) => updateDraft({ status })}
-          onCategoryChange={(category) => updateDraft({ category })}
+          onTopicChange={(topic) => updateDraft({ topics: [getTopicByName(topic)] })}
           onCoverImageChange={handleCoverImageChange}
           onCoverImageRemove={handleCoverImageRemove}
           onPublish={handlePublish}

@@ -178,8 +178,8 @@ select {
 }
 
 .dark .ProseMirror mark {
-  background: #3A2116;
-  color: #F5EFE7;
+  background: #6A3A22;
+  color: #FFF7F0;
 }
 
 .ProseMirror img {
@@ -190,6 +190,11 @@ select {
   max-height: 24rem;
   object-fit: cover;
   width: 100%;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .dark .ProseMirror img {

@@ -5,8 +5,9 @@ const MOCK_AUTH_USER_KEY = 'quiet-pages-mock-user'
 export type MockAuthUser = {
   name: string
   email: string
-  avatar?: string
-  description?: string
+  username?: string
+  profileImage?: string
+  authorDescription?: string
 }
 
 export function saveMockUser(user: MockAuthUser) {

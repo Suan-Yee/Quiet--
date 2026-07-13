@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { Search } from 'lucide-react'
 import Button from '../components/common/Button'
 import Container from '../components/common/Container'
 import EmptyState from '../components/common/EmptyState'
 import FeedTabs, { type FeedTab } from '../components/home/FeedTabs'
-import HeroSection from '../components/home/HeroSection'
 import NewsletterCard from '../components/home/NewsletterCard'
 import SuggestedAuthors from '../components/home/SuggestedAuthors'
 import TopicsCard from '../components/home/TopicsCard'
@@ -37,10 +36,10 @@ function HomePage() {
     return tabPosts.filter((post) => {
       return [
         post.title,
-        post.preview,
-        post.category,
+        post.excerpt,
+        ...post.topics.map((topic) => topic.name),
         post.author.name,
-        post.authorDescription,
+        post.author.authorDescription,
       ].some((value) => value.toLowerCase().includes(normalizedQuery))
     })
   }, [activeTab, query])
@@ -49,10 +48,11 @@ function HomePage() {
     setSearchParams({})
   }
 
+  const visiblePosts = posts.slice(0, 7)
+  const mobileNewsletterIndex = Math.min(1, visiblePosts.length - 1)
+
   return (
     <Container>
-      <HeroSection />
-
       <section id="feed" className="grid gap-8 py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-11">
         <div>
           <div className="mb-6 flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 sm:flex-row sm:items-center sm:justify-between">
@@ -72,8 +72,15 @@ function HomePage() {
 
           {posts.length > 0 ? (
             <div className="space-y-6">
-              {posts.slice(0, 7).map((post) => (
-                <PostCard key={post.id} post={post} />
+              {visiblePosts.map((post, index) => (
+                <Fragment key={post.id}>
+                  <PostCard post={post} />
+                  {index === mobileNewsletterIndex ? (
+                    <div className="lg:hidden">
+                      <NewsletterCard />
+                    </div>
+                  ) : null}
+                </Fragment>
               ))}
             </div>
           ) : (
@@ -91,10 +98,12 @@ function HomePage() {
         </div>
 
         <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-5">
-            <SuggestedAuthors />
-            <TopicsCard />
+          <div className="h-full space-y-5">
             <NewsletterCard />
+            <SuggestedAuthors />
+            <div className="sticky top-24">
+              <TopicsCard />
+            </div>
           </div>
         </aside>
       </section>

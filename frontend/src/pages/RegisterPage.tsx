@@ -46,8 +46,9 @@ function RegisterPage() {
     saveMockUser({
       name: name.trim(),
       email: email.trim(),
-      avatar: mockCurrentUser.avatar,
-      description: mockCurrentUser.description,
+      username: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      profileImage: mockCurrentUser.profileImage,
+      authorDescription: mockCurrentUser.authorDescription,
     })
     navigate('/profile')
   }

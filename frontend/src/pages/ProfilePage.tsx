@@ -12,9 +12,11 @@ import Container from '../components/common/Container'
 import EmptyState from '../components/common/EmptyState'
 import PostCard from '../components/post/PostCard'
 import { mockCurrentUser } from '../data/mockCurrentUser'
-import { mockPosts, type MockPost } from '../data/mockPosts'
+import { mockPosts, topics } from '../data/mockPosts'
+import type { MockPost } from '../types/post'
 import { getPostInteraction } from '../utils/localInteractions'
 import { getLocalDraft, getLocalPosts } from '../utils/localPosts'
+import { getPrimaryTopic } from '../utils/postDisplay'
 import { getAuthorSlug } from '../utils/profileLinks'
 
 type ProfileTab = 'posts' | 'featured' | 'drafts' | 'bookmarks'
@@ -32,8 +34,10 @@ type ProfileUser = {
 }
 
 const currentUserProfile: ProfileUser = {
-  ...mockCurrentUser,
-  bio: 'I write about the quiet systems, humane constraints, and daily rituals that help independent writers keep returning to the page.',
+  name: mockCurrentUser.name,
+  avatar: mockCurrentUser.profileImage,
+  description: mockCurrentUser.authorDescription,
+  bio: mockCurrentUser.bio,
   topics: ['Writing', 'Creative practice', 'Essays', 'Routines'],
   subscribers: '12.8K',
   following: 48,
@@ -43,33 +47,39 @@ const currentUserProfile: ProfileUser = {
 
 const fallbackDrafts: MockPost[] = [
   {
-    id: 'draft-notes-on-cadence',
-    title: 'Notes on cadence before the first sentence',
-    preview:
-      'A working draft about rhythm, hesitation, and the small decisions that shape a generous opening.',
-    category: 'Writing',
-    authorDescription: mockCurrentUser.description,
+    id: 9001,
+    authorId: mockCurrentUser.id,
     author: mockCurrentUser,
-    date: 'Draft',
-    readTime: '3 min read',
+    title: 'Notes on cadence before the first sentence',
+    excerpt:
+      'A working draft about rhythm, hesitation, and the small decisions that shape a generous opening.',
+    contentText: '',
+    contentJson: { type: 'doc', content: [] },
+    coverImage: '',
+    coverImagePublicId: '',
+    status: 'draft',
+    visibility: 'public',
+    readTime: 3,
     isFeatured: false,
     quotePreview: 'Sometimes the beginning is not an idea. It is a tempo.',
     reactionCount: 0,
     commentCount: 0,
+    bookmarkCount: 0,
+    topics: [topics[0]],
+    createdAt: '2026-07-04T00:00:00.000Z',
+    updatedAt: '2026-07-04T00:00:00.000Z',
     isReacted: false,
     isBookmarked: false,
-    reactions: 0,
-    comments: 0,
   },
 ]
 
 function buildAuthorProfile(post: MockPost, index: number): ProfileUser {
   return {
     name: post.author.name,
-    avatar: post.author.avatar,
-    description: post.authorDescription,
-    bio: `${post.authorDescription}. ${post.author.name} writes calm essays for readers who like useful ideas, careful details, and a little room to think.`,
-    topics: [post.category, 'Essays', 'Notes'],
+    avatar: post.author.profileImage,
+    description: post.author.authorDescription,
+    bio: post.author.bio,
+    topics: [getPrimaryTopic(post.topics), 'Essays', 'Notes'],
     subscribers: `${(4.8 + index * 1.7).toFixed(1)}K`,
     following: 18 + index * 7,
     cadence: index % 2 === 0 ? 'Weekly essays' : 'Monthly notes',
@@ -78,32 +88,33 @@ function buildAuthorProfile(post: MockPost, index: number): ProfileUser {
 }
 
 function draftToPost(draft: ReturnType<typeof getLocalDraft>): MockPost | null {
-  if (!draft || draft.status !== 'Draft') {
+  if (!draft || draft.status !== 'draft') {
     return null
   }
 
   return {
     id: draft.id,
+    authorId: draft.authorId,
+    author: draft.author,
     title: draft.title || 'Untitled draft',
-    preview: draft.excerpt || 'No excerpt yet.',
-    category: draft.category,
-    authorDescription: draft.author.description,
-    author: {
-      name: draft.author.name,
-      avatar: draft.author.avatar,
-    },
-    date: 'Draft',
+    excerpt: draft.excerpt || 'No excerpt yet.',
+    contentText: draft.contentText,
+    contentJson: draft.contentJson,
+    coverImage: draft.coverImage,
+    coverImagePublicId: draft.coverImagePublicId,
+    status: draft.status,
+    visibility: draft.visibility,
     readTime: draft.readTime,
-    image: draft.coverImage || undefined,
-    isFeatured: draft.isFeatured,
-    quotePreview: draft.quotePreview || undefined,
     reactionCount: draft.reactionCount,
     commentCount: draft.commentCount,
+    bookmarkCount: draft.bookmarkCount,
+    topics: draft.topics,
+    createdAt: draft.createdAt,
+    updatedAt: draft.updatedAt,
+    isFeatured: draft.isFeatured,
+    quotePreview: draft.quotePreview,
     isReacted: draft.isReacted,
     isBookmarked: draft.isBookmarked,
-    content: draft.content,
-    reactions: draft.reactionCount,
-    comments: draft.commentCount,
   }
 }
 
@@ -312,13 +323,13 @@ function ProfilePage() {
                 {featuredPost.title}
               </h2>
               <p className="mt-3 line-clamp-2 text-sm leading-7 text-[var(--color-secondary)]">
-                {featuredPost.preview}
+                {featuredPost.excerpt}
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-3 text-xs font-semibold text-[var(--color-secondary)]">
                 <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-soft-accent)] px-3 py-1 text-[var(--color-text)]">
-                  {featuredPost.category}
+                  {getPrimaryTopic(featuredPost.topics)}
                 </span>
-                <span>{featuredPost.readTime}</span>
+                <span>{formatReadTime(featuredPost.readTime)}</span>
                 <span className="inline-flex items-center gap-1 text-[var(--color-text)] transition group-hover:text-[var(--color-accent)]">
                   Read essay
                   <ArrowRight

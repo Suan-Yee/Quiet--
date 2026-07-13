@@ -1,7 +1,7 @@
 import { Menu, Search, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
-import quietLogo from '../../assets/quiet-logo.svg'
+import quietLogo from '../../assets/quiet-logo.png'
 import { buttonStyles } from '../common/Button'
 import Container from '../common/Container'
 import ThemeToggle from '../common/ThemeToggle'
@@ -44,7 +44,7 @@ function Navbar() {
           <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 transition group-hover:-translate-y-0.5 group-hover:border-[var(--color-border-soft)] dark:shadow-black/10">
             <img src={quietLogo} alt="" className="h-full w-full object-cover" />
           </span>
-          <span className="font-reading text-2xl font-bold leading-none">quiet</span>
+          <span className="font-reading text-2xl font-bold leading-none">Quiet</span>
         </NavLink>
 
         <form
@@ -62,9 +62,11 @@ function Navbar() {
         </form>
 
         <nav className="flex items-center justify-end gap-2 text-sm font-medium">
-          <NavLink to="/create" className={buttonStyles('primary', 'hidden sm:inline-flex px-5')}>
-            Write
-          </NavLink>
+          <span className="hidden sm:block">
+            <NavLink to="/create" className={buttonStyles('primary', 'px-5')}>
+              Write
+            </NavLink>
+          </span>
           <NavLink to="/profile" className={buttonStyles('ghost', 'px-3')}>
             Profile
           </NavLink>

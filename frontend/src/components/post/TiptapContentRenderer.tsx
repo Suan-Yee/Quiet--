@@ -5,7 +5,7 @@ type TiptapContentRendererProps = {
   content: JSONContent
 }
 
-function renderMarks(text: string, marks: JSONContent['marks'] = []) {
+function renderMarks(text: string, marks: JSONContent['marks'] = [], showHighlight = true) {
   return marks.reduce<ReactNode>((currentValue, mark) => {
     if (mark.type === 'bold') {
       return <strong>{currentValue}</strong>
@@ -15,25 +15,29 @@ function renderMarks(text: string, marks: JSONContent['marks'] = []) {
       return <em>{currentValue}</em>
     }
 
-    if (mark.type === 'highlight') {
-      return <mark className="rounded bg-[var(--color-soft-accent)] px-1 text-[var(--color-text)]">{currentValue}</mark>
+    if (mark.type === 'highlight' && showHighlight) {
+      return (
+        <mark className="rounded bg-[var(--color-soft-accent)] px-1 text-[var(--color-text)] dark:bg-[#6A3A22] dark:text-[#FFF7F0]">
+          {currentValue}
+        </mark>
+      )
     }
 
     return currentValue
   }, text)
 }
 
-function renderInline(nodes: JSONContent[] = []) {
+function renderInline(nodes: JSONContent[] = [], showHighlight = true) {
   return nodes.map((node, index) => {
     if (node.type === 'text') {
-      return <span key={index}>{renderMarks(node.text ?? '', node.marks)}</span>
+      return <span key={index}>{renderMarks(node.text ?? '', node.marks, showHighlight)}</span>
     }
 
     if (node.type === 'hardBreak') {
       return <br key={index} />
     }
 
-    return <span key={index}>{renderInline(node.content)}</span>
+    return <span key={index}>{renderInline(node.content, showHighlight)}</span>
   })
 }
 
@@ -58,13 +62,13 @@ function renderBlock(node: JSONContent, index: number) {
       return (
         <aside
           key={index}
-          className="my-8 rounded-2xl border border-[#EBCAB8] bg-[#FFF1E8] px-5 py-4"
+          className="mx-auto my-8 max-w-[680px] rounded-2xl border border-[#EBCAB8] bg-[#FFF1E8] px-5 py-4 dark:border-[#5A3828] dark:bg-[#2B1D16]"
         >
           <p className="text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             Highlighted note
           </p>
           <p className="mt-2 font-reading text-base leading-8 text-[var(--color-text)]">
-            {renderInline(node.content)}
+            {renderInline(node.content, false)}
           </p>
         </aside>
       )
@@ -73,7 +77,11 @@ function renderBlock(node: JSONContent, index: number) {
     return (
       <p
         key={index}
-        className={index === 0 ? 'mb-8 text-xl leading-9 sm:text-[1.35rem] sm:leading-10' : 'my-7 text-lg leading-9'}
+        className={
+          index === 0
+            ? 'mx-auto mb-7 max-w-[680px] text-lg leading-8'
+            : 'mx-auto my-6 max-w-[680px] text-[1.0625rem] leading-8'
+        }
       >
         {isEmpty ? <br /> : renderInline(node.content)}
       </p>
@@ -85,14 +93,14 @@ function renderBlock(node: JSONContent, index: number) {
 
     if (level === 3) {
       return (
-        <h3 key={index} className="mb-3 mt-9 font-reading text-xl font-bold leading-snug text-[var(--color-text)] sm:text-2xl">
+        <h3 key={index} className="mx-auto mb-3 mt-9 max-w-[680px] font-reading text-lg font-bold leading-snug text-[var(--color-text)] sm:text-xl">
           {renderInline(node.content)}
         </h3>
       )
     }
 
     return (
-      <h2 key={index} className="mb-4 mt-11 font-reading text-2xl font-bold leading-snug text-[var(--color-text)] sm:text-3xl">
+      <h2 key={index} className="mx-auto mb-4 mt-10 max-w-[680px] font-reading text-xl font-bold leading-snug text-[var(--color-text)] sm:text-2xl">
         {renderInline(node.content)}
       </h2>
     )
@@ -102,7 +110,7 @@ function renderBlock(node: JSONContent, index: number) {
     return (
       <blockquote
         key={index}
-        className="my-9 border-l-4 border-[var(--color-border-soft)] bg-[var(--color-card-elevated)] px-6 py-5 font-reading text-xl italic leading-9 text-[var(--color-text)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10"
+        className="mx-auto my-8 max-w-[680px] border-l-4 border-[var(--color-border-soft)] bg-[var(--color-card-elevated)] px-5 py-4 font-reading text-lg italic leading-8 text-[var(--color-text)]"
       >
         {node.content?.map((childNode, childIndex) => (
           <div key={childIndex}>{renderInline(childNode.content)}</div>
@@ -117,7 +125,7 @@ function renderBlock(node: JSONContent, index: number) {
     return (
       <ListTag
         key={index}
-        className={`my-8 space-y-3 border-l border-[var(--color-border)] pl-6 font-reading text-lg leading-8 text-[var(--color-text)] ${
+        className={`mx-auto my-7 max-w-[680px] space-y-3 border-l border-[var(--color-border)] pl-6 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)] ${
           node.type === 'orderedList' ? 'list-decimal' : ''
         }`}
       >
@@ -136,17 +144,25 @@ function renderBlock(node: JSONContent, index: number) {
   }
 
   if (node.type === 'horizontalRule') {
-    return <div key={index} className="my-10 h-px w-full bg-[#E8E1D8]" aria-hidden="true" />
+    return <div key={index} className="mx-auto my-9 h-px w-full max-w-[680px] bg-[var(--color-border)]" aria-hidden="true" />
   }
 
   if (node.type === 'image') {
+    const caption = typeof node.attrs?.title === 'string' ? node.attrs.title.trim() : ''
+
     return (
-      <img
-        key={index}
-        src={node.attrs?.src}
-        alt={node.attrs?.alt ?? ''}
-        className="my-8 max-h-96 w-full rounded-2xl border border-[var(--color-border)] object-cover"
-      />
+      <figure key={index} className="mx-auto my-9 max-w-[640px]">
+        <img
+          src={node.attrs?.src}
+          alt={node.attrs?.alt ?? ''}
+          className="max-h-[32rem] w-full rounded-2xl bg-[var(--color-bg)] object-contain"
+        />
+        {caption ? (
+          <figcaption className="mx-auto mt-2 max-w-[680px] px-2 text-center font-sans text-sm leading-6 text-[var(--color-secondary)]">
+            {caption}
+          </figcaption>
+        ) : null}
+      </figure>
     )
   }
 
@@ -155,7 +171,7 @@ function renderBlock(node: JSONContent, index: number) {
 
 function TiptapContentRenderer({ content }: TiptapContentRendererProps) {
   return (
-    <div className="mt-10 font-reading text-lg leading-9 text-[var(--color-text)]">
+    <div className="py-8 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)] sm:py-10">
       {content.content?.map(renderBlock)}
     </div>
   )

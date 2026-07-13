@@ -37,8 +37,9 @@ function LoginPage() {
     saveMockUser({
       name: existingUser?.name ?? mockCurrentUser.name,
       email: email.trim(),
-      avatar: existingUser?.avatar ?? mockCurrentUser.avatar,
-      description: existingUser?.description ?? mockCurrentUser.description,
+      username: existingUser?.username ?? mockCurrentUser.username,
+      profileImage: existingUser?.profileImage ?? mockCurrentUser.profileImage,
+      authorDescription: existingUser?.authorDescription ?? mockCurrentUser.authorDescription,
     })
     navigate('/profile')
   }
@@ -50,7 +51,7 @@ function LoginPage() {
       subtitle="Return to your reading list, drafts, and quiet corner of the platform."
       footer={(
         <p>
-          New to quiet?{' '}
+          New to Quiet?{' '}
           <NavLink className="font-semibold text-[#FF6719] transition hover:text-[#E85D16] dark:text-[#FF7A2F]" to="/register">
             Create an account
           </NavLink>
