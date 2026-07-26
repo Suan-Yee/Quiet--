@@ -28,14 +28,33 @@ export type PostStatus = 'draft' | 'published' | 'archived'
 
 export type PostVisibility = 'public' | 'private' | 'subscribers'
 
+export type PostType = 'article' | 'normal'
+
+export type PostMediaMimeType =
+  | 'image/avif'
+  | 'image/gif'
+  | 'image/jpeg'
+  | 'image/jpg'
+  | 'image/png'
+  | 'image/webp'
+
+export type PostMedia = {
+  id: string
+  url: string
+  alt: string
+  mimeType: PostMediaMimeType
+}
+
 export type Post = {
   id: number
   authorId: number
   author: User
+  postType?: PostType
   title: string
   excerpt: string
   contentText: string
   contentJson: JSONContent
+  media?: PostMedia[]
   coverImage: string
   coverImagePublicId: string
   status: PostStatus
@@ -44,9 +63,11 @@ export type Post = {
   reactionCount: number
   commentCount: number
   bookmarkCount: number
+  repostCount?: number
   topics: Topic[]
   createdAt: string
   updatedAt: string
+  editedAt?: string
 }
 
 export type MockPost = Post & {
@@ -54,15 +75,18 @@ export type MockPost = Post & {
   isBookmarked: boolean
   isFeatured: boolean
   quotePreview: string
+  isReposted?: boolean
 }
 
 export type PostDraft = {
   id: number
   authorId: number
+  postType?: PostType
   title: string
   excerpt: string
   contentText: string
   contentJson: JSONContent
+  media?: PostMedia[]
   coverImage: string
   coverImagePublicId: string
   status: PostStatus
@@ -71,12 +95,15 @@ export type PostDraft = {
   reactionCount: number
   commentCount: number
   bookmarkCount: number
+  repostCount?: number
   topics: Topic[]
   author: User
   createdAt: string
   updatedAt: string
+  editedAt?: string
   isReacted: boolean
   isBookmarked: boolean
   isFeatured: boolean
   quotePreview: string
+  isReposted?: boolean
 }

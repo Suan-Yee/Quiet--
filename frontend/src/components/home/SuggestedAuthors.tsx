@@ -1,41 +1,57 @@
-import Card from '../common/Card'
 import { suggestedAuthors } from '../../data/mockPosts'
 
 function SuggestedAuthors() {
   return (
-    <Card className="p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold text-[var(--color-text)]">Suggested authors</h2>
-        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-          Curated
+    <section>
+      <div className="flex items-end justify-between gap-4 border-b border-[var(--color-border)] pb-4">
+        <div>
+          <p className="type-kicker">New voices</p>
+          <h2 className="type-section-title mt-2">
+            Writers worth meeting
+          </h2>
+        </div>
+        <span className="hidden text-sm text-[var(--color-secondary)] sm:block">
+          Selected by Quiet
         </span>
       </div>
-      <div className="mt-4 space-y-2">
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
         {suggestedAuthors.map((author) => (
-          <div
+          <article
             key={author.name}
-            className="flex items-center gap-3 rounded-2xl p-2 transition hover:bg-[var(--color-card-elevated)]"
+            className="group flex min-h-48 flex-col rounded-[16px] border border-[var(--color-border)] bg-[var(--color-card)] p-5 transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)]"
           >
-            <img
-              src={author.avatar}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-[var(--color-border)]"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[var(--color-text)]">{author.name}</p>
-              <p className="truncate text-xs font-medium text-[var(--color-muted)]">{author.topic}</p>
+            <div className="flex items-center gap-3">
+              <img
+                src={author.avatar}
+                alt=""
+                className="h-11 w-11 rounded-[12px] object-cover ring-1 ring-[var(--color-border)]"
+              />
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-[var(--color-text)]">
+                  {author.name}
+                </h3>
+                <p className="truncate text-xs font-medium text-[var(--color-muted)]">
+                  {author.topic}
+                </p>
+              </div>
             </div>
+
+            <p className="mt-4 flex-1 text-sm leading-6 text-[var(--color-secondary)]">
+              {author.description}
+            </p>
+
             <button
               type="button"
               aria-label={`Follow ${author.name}`}
-              className="shrink-0 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-soft-accent)] hover:text-[var(--color-accent)]"
+              className="mt-4 inline-flex min-h-10 w-fit items-center border-b border-[var(--color-text)] text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
             >
               Follow
             </button>
-          </div>
+          </article>
         ))}
       </div>
-    </Card>
+    </section>
   )
 }
 

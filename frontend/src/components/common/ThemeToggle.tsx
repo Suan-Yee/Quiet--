@@ -29,7 +29,7 @@ function ThemeToggle() {
       type="button"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-pressed={isDark}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E8DED2] bg-white/88 text-[#1F2933] shadow-sm shadow-[#1F2933]/5 transition hover:border-[#EBCAB8] hover:bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[#FF6719] focus:ring-offset-2 focus:ring-offset-[#FAF7F0] dark:border-[#3A3027] dark:bg-[#211B16] dark:text-[#F5EFE7] dark:shadow-black/10 dark:hover:border-[#FF7A2F]/50 dark:hover:bg-[#2A221B] dark:focus:ring-[#FF7A2F] dark:focus:ring-offset-[#17130F]"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text)] transition hover:-translate-y-0.5 hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
       {isDark ? <Sun aria-hidden="true" size={17} /> : <Moon aria-hidden="true" size={17} />}

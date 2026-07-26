@@ -15,14 +15,14 @@ function ErrorState({
   className = '',
 }: ErrorStateProps) {
   return (
-    <Card className={`mx-auto max-w-xl border-[#EBCAB8] bg-[#FFFDF9] p-8 text-center sm:p-10 ${className}`}>
-      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF1E8] text-sm font-bold text-[#FF6719]">
+    <Card className={`mx-auto max-w-xl border-[var(--color-danger)]/30 bg-[var(--color-card)] p-8 text-center sm:p-10 ${className}`}>
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-danger-soft)] text-sm font-bold text-[var(--color-danger)]">
         !
       </div>
-      <h2 className="mt-4 font-reading text-3xl font-bold leading-tight text-[#1F2933]">
+      <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-[var(--color-text)]">
         {title}
       </h2>
-      <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[#6B7280]">{description}</p>
+      <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-secondary)]">{description}</p>
       {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
     </Card>
   )

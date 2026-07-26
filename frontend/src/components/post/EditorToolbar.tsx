@@ -35,14 +35,15 @@ function ToolbarButton({ label, isActive = false, disabled = false, onClick, chi
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2.5 text-sm font-semibold transition ${
+      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${
         disabled
           ? 'cursor-not-allowed text-[var(--color-muted)] opacity-50'
           : isActive
-          ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]'
-          : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'
+            ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]'
+            : 'text-[var(--color-secondary)] hover:bg-[var(--color-card)] hover:text-[var(--color-text)]'
       }`}
       aria-label={label}
+      aria-pressed={isActive || undefined}
       title={label}
     >
       {children}
@@ -65,9 +66,13 @@ function EditorToolbar({ editor }: EditorToolbarProps) {
   })
 
   return (
-    <div className="border-b border-[var(--color-border)] bg-[var(--color-card)]">
-      <div className="theme-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
-        <div className="flex gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-1">
+    <div className="bg-[var(--color-card)]">
+      <div
+        className="theme-scrollbar sticky top-[140px] z-30 flex gap-2 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-card)]/96 px-3 py-2.5 backdrop-blur-xl sm:px-5"
+        role="toolbar"
+        aria-label="Article formatting"
+      >
+        <div className="flex gap-1 rounded-xl bg-[var(--color-card-elevated)] p-1">
           <ToolbarButton
             label="Bold"
             isActive={editor.isActive('bold')}
@@ -91,7 +96,7 @@ function EditorToolbar({ editor }: EditorToolbarProps) {
           </ToolbarButton>
         </div>
 
-      <div className="flex gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-1">
+      <div className="flex gap-1 rounded-xl bg-[var(--color-card-elevated)] p-1">
         <ToolbarButton
           label="Heading 2"
           isActive={editor.isActive('heading', { level: 2 })}
@@ -115,7 +120,7 @@ function EditorToolbar({ editor }: EditorToolbarProps) {
         </ToolbarButton>
       </div>
 
-      <div className="flex gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-1">
+      <div className="flex gap-1 rounded-xl bg-[var(--color-card-elevated)] p-1">
         <ToolbarButton
           label="Bullet list"
           isActive={editor.isActive('bulletList')}
@@ -132,7 +137,7 @@ function EditorToolbar({ editor }: EditorToolbarProps) {
         </ToolbarButton>
       </div>
 
-      <div className="flex gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-1">
+      <div className="flex gap-1 rounded-xl bg-[var(--color-card-elevated)] p-1">
         <ToolbarButton
           label={`Insert inline image (${imageCount} of ${MAX_INLINE_IMAGES})`}
           isActive={isImagePanelOpen}
@@ -149,11 +154,19 @@ function EditorToolbar({ editor }: EditorToolbarProps) {
         </ToolbarButton>
       </div>
 
-      <div className="flex gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-1">
-        <ToolbarButton label="Undo" onClick={() => editor.chain().focus().undo().run()}>
+      <div className="flex gap-1 rounded-xl bg-[var(--color-card-elevated)] p-1">
+        <ToolbarButton
+          label="Undo"
+          disabled={!editor.can().chain().focus().undo().run()}
+          onClick={() => editor.chain().focus().undo().run()}
+        >
           <Undo2 size={17} aria-hidden="true" />
         </ToolbarButton>
-        <ToolbarButton label="Redo" onClick={() => editor.chain().focus().redo().run()}>
+        <ToolbarButton
+          label="Redo"
+          disabled={!editor.can().chain().focus().redo().run()}
+          onClick={() => editor.chain().focus().redo().run()}
+        >
           <Redo2 size={17} aria-hidden="true" />
         </ToolbarButton>
       </div>

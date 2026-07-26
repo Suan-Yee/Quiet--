@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { ArrowRight, Bookmark, Heart } from 'lucide-react'
+import { ArrowUpRight, Bookmark, Heart } from 'lucide-react'
 import { NavLink } from 'react-router'
-import Card from '../common/Card'
 import type { MockPost } from '../../types/post'
 import { getPostInteraction, savePostBookmark, savePostReaction } from '../../utils/localInteractions'
 import { formatPostDate, formatReadTime, getPostPath, getPrimaryTopic } from '../../utils/postDisplay'
@@ -9,9 +8,162 @@ import { getAuthorProfilePath } from '../../utils/profileLinks'
 
 type PostCardProps = {
   post: MockPost
+  variant?: 'row' | 'compact'
 }
 
-function PostCard({ post }: PostCardProps) {
+type StoryArtworkProps = {
+  post: MockPost
+  className?: string
+  imageClassName?: string
+}
+
+function StoryArtwork({ post, className = '', imageClassName = '' }: StoryArtworkProps) {
+  const primaryTopic = getPrimaryTopic(post.topics)
+
+  if (post.coverImage) {
+    return (
+      <div
+        className={`overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg)] ${className}`}
+      >
+        <img
+          src={post.coverImage}
+          alt=""
+          className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.025] ${imageClassName}`}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={`relative flex overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-highlight)] p-5 text-[var(--color-brand-panel)] ${className}`}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute -right-10 -top-12 h-28 w-28 rounded-full border border-[var(--color-brand-panel)]/15"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -bottom-10 right-8 h-24 w-24 rotate-12 border border-[var(--color-brand-panel)]/15"
+      />
+      <div className="relative mt-auto">
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em]">{primaryTopic}</p>
+        <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6">
+          {post.quotePreview || post.title}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+type PostBylineProps = {
+  post: MockPost
+  authorProfilePath: string
+}
+
+function PostByline({ post, authorProfilePath }: PostBylineProps) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
+        <img
+          src={post.author.profileImage}
+          alt=""
+          className="h-10 w-10 rounded-[10px] object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
+        />
+      </NavLink>
+      <div className="min-w-0">
+        <p className="truncate text-sm text-[var(--color-secondary)]">
+          <NavLink
+            to={authorProfilePath}
+            className="font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent)]"
+          >
+            {post.author.name}
+          </NavLink>
+          <span className="hidden sm:inline"> · {post.author.authorDescription}</span>
+        </p>
+        <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
+          {formatPostDate(post.createdAt)} · {formatReadTime(post.readTime)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+type PostActionsProps = {
+  post: MockPost
+  postPath: string
+  isLiked: boolean
+  isBookmarked: boolean
+  reactionCount: number
+  onReactionToggle: () => void
+  onBookmarkToggle: () => void
+}
+
+function PostActions({
+  post,
+  postPath,
+  isLiked,
+  isBookmarked,
+  reactionCount,
+  onReactionToggle,
+  onBookmarkToggle,
+}: PostActionsProps) {
+  return (
+    <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4 text-xs font-medium text-[var(--color-secondary)]">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onReactionToggle}
+          className={`inline-flex h-10 items-center gap-1.5 rounded-[8px] px-2.5 transition hover:bg-[var(--color-highlight)] ${
+            isLiked
+              ? 'text-[var(--color-accent)]'
+              : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
+          }`}
+          aria-pressed={isLiked}
+          aria-label={isLiked ? `Remove love from ${post.title}` : `Love ${post.title}`}
+        >
+          <Heart
+            size={15}
+            aria-hidden="true"
+            className={isLiked ? 'fill-[var(--color-accent)]' : ''}
+          />
+          <span>{reactionCount}</span>
+        </button>
+
+        <span className="px-2">{post.commentCount} comments</span>
+
+        <button
+          type="button"
+          onClick={onBookmarkToggle}
+          className={`inline-flex h-10 items-center gap-1.5 rounded-[8px] px-2.5 transition hover:bg-[var(--color-highlight)] ${
+            isBookmarked
+              ? 'text-[var(--color-accent)]'
+              : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
+          }`}
+          aria-pressed={isBookmarked}
+          aria-label={isBookmarked ? `Remove bookmark for ${post.title}` : `Save ${post.title}`}
+        >
+          <Bookmark
+            size={15}
+            aria-hidden="true"
+            className={isBookmarked ? 'fill-[var(--color-accent)]' : ''}
+          />
+          <span className="hidden sm:inline">Save</span>
+        </button>
+      </div>
+
+      <NavLink
+        to={postPath}
+        className="inline-flex h-10 items-center gap-1 border-b border-[var(--color-text)] text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+      >
+        Read story
+        <ArrowUpRight size={15} aria-hidden="true" />
+      </NavLink>
+    </footer>
+  )
+}
+
+function PostCard({ post, variant = 'row' }: PostCardProps) {
   const interaction = getPostInteraction(post.id)
   const [isLiked, setIsLiked] = useState(interaction.isReacted ?? post.isReacted)
   const [isBookmarked, setIsBookmarked] = useState(interaction.isBookmarked ?? post.isBookmarked)
@@ -38,136 +190,88 @@ function PostCard({ post }: PostCardProps) {
     })
   }
 
-  return (
-    <Card className="group overflow-hidden p-6 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] hover:shadow-md hover:shadow-[#1F2933]/8 dark:hover:shadow-black/20 sm:p-7">
-      <article>
-        <header className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
-              <img
-                src={post.author.profileImage}
-                alt=""
-                className="h-11 w-11 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
-              />
-            </NavLink>
-            <div className="min-w-0">
-              <NavLink
-                to={authorProfilePath}
-                className="block truncate text-sm font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent)]"
-              >
-                {post.author.name}
-              </NavLink>
-              <NavLink
-                to={authorProfilePath}
-                className="mt-0.5 block truncate text-xs font-medium text-[var(--color-secondary)] transition hover:text-[var(--color-text)]"
-              >
-                {post.author.authorDescription}
-              </NavLink>
-              <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
-                {formatPostDate(post.createdAt)} - {formatReadTime(post.readTime)}
-              </p>
-            </div>
-          </div>
+  const actions = (
+    <PostActions
+      post={post}
+      postPath={postPath}
+      isLiked={isLiked}
+      isBookmarked={isBookmarked}
+      reactionCount={reactionCount}
+      onReactionToggle={handleReactionToggle}
+      onBookmarkToggle={handleBookmarkToggle}
+    />
+  )
 
-          {post.isFeatured ? (
-            <span className="shrink-0 rounded-full border border-[var(--color-border-soft)] bg-[var(--color-soft-accent)] px-3 py-1 text-xs font-semibold text-[var(--color-text)]">
-              Editor&apos;s pick
-            </span>
-          ) : null}
-        </header>
+  if (variant === 'compact') {
+    return (
+      <article className="group flex h-full flex-col rounded-[16px] border border-[var(--color-border)] bg-[var(--color-card)] p-3 transition duration-200 hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] sm:p-4">
+        <NavLink to={postPath} aria-label={`Read ${post.title}`}>
+          <StoryArtwork post={post} className="aspect-[16/9] w-full" />
+        </NavLink>
 
-        <div
-          className={`mt-5 ${
-            post.coverImage
-              ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_188px] md:items-start'
-              : ''
-          }`}
-        >
-          <div>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card-elevated)] px-3 py-1 text-xs font-semibold text-[var(--color-secondary)]">
-                {primaryTopic}
-              </span>
-            </div>
-
-            <NavLink to={postPath} className="block">
-              <h2 className="font-reading text-[1.6rem] font-bold leading-snug text-[var(--color-text)] transition group-hover:text-[var(--color-text)]">
-                {post.title}
-              </h2>
-              <p className="mt-4 line-clamp-3 text-[0.98rem] leading-8 text-[var(--color-secondary)]">
-                {post.excerpt}
-              </p>
-            </NavLink>
-
-            {post.quotePreview ? (
-              <blockquote className="mt-5 border-l-4 border-[var(--color-border-soft)] bg-[var(--color-card-elevated)] px-4 py-3">
-                <p className="font-reading text-sm italic leading-6 text-[var(--color-text)]">
-                  "{post.quotePreview}"
-                </p>
-              </blockquote>
+        <div className="flex flex-1 flex-col px-1 pb-1 pt-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--color-muted)]">
+            <span>{primaryTopic}</span>
+            {post.isFeatured ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-[var(--color-accent)]">Editor&apos;s pick</span>
+              </>
             ) : null}
           </div>
 
-          {post.coverImage ? (
-            <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] md:h-40 md:w-[188px]">
-              <img
-                src={post.coverImage}
-                alt=""
-                className="h-44 w-full object-cover transition duration-300 group-hover:scale-[1.02] md:h-full md:w-full"
-              />
-            </div>
-          ) : null}
-        </div>
+          <NavLink to={postPath} className="mt-3 block">
+            <h2 className="type-story-title">
+              {post.title}
+            </h2>
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--color-secondary)]">
+              {post.excerpt}
+            </p>
+          </NavLink>
 
-        <footer className="mt-6 flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-[var(--color-border)] pt-4 text-xs font-medium text-[var(--color-secondary)]">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-            <button
-              type="button"
-              onClick={handleReactionToggle}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 transition hover:bg-[#FFF1E8] ${
-                isLiked ? 'text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
-              }`}
-              aria-pressed={isLiked}
-              aria-label={isLiked ? `Unlike ${post.title}` : `Like ${post.title}`}
-            >
-              <Heart
-                size={16}
-                aria-hidden="true"
-                className={isLiked ? 'fill-[var(--color-accent)]' : ''}
-              />
-              <span>{reactionCount}</span>
-            </button>
-
-            <span className="inline-flex h-8 items-center">{post.commentCount} responses</span>
-
-            <button
-              type="button"
-              onClick={handleBookmarkToggle}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 transition hover:bg-[#FFF1E8] ${
-                isBookmarked ? 'text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
-              }`}
-              aria-pressed={isBookmarked}
-              aria-label={isBookmarked ? `Remove bookmark for ${post.title}` : `Save ${post.title}`}
-            >
-              <Bookmark
-                size={16}
-                aria-hidden="true"
-                className={isBookmarked ? 'fill-[var(--color-accent)]' : ''}
-              />
-              <span>Save</span>
-            </button>
+          <div className="mt-5">
+            <PostByline post={post} authorProfilePath={authorProfilePath} />
           </div>
 
-          <NavLink
-            to={postPath}
-            className="inline-flex h-8 items-center gap-1.5 text-sm font-semibold text-[var(--color-text)] transition hover:translate-x-0.5 hover:text-[var(--color-accent)]"
-          >
-            Read more
-            <ArrowRight size={15} aria-hidden="true" />
-          </NavLink>
-        </footer>
+          <div className="mt-auto">{actions}</div>
+        </div>
       </article>
-    </Card>
+    )
+  }
+
+  return (
+    <article className="group rounded-[16px] border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition duration-200 hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] sm:p-5">
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-stretch">
+        <div className="min-w-0">
+          <PostByline post={post} authorProfilePath={authorProfilePath} />
+
+          <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--color-muted)]">
+            <span>{primaryTopic}</span>
+            {post.isFeatured ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-[var(--color-accent)]">Editor&apos;s pick</span>
+              </>
+            ) : null}
+          </div>
+
+          <NavLink to={postPath} className="mt-2 block">
+            <h2 className="type-story-title">
+              {post.title}
+            </h2>
+            <p className="mt-3 line-clamp-2 text-sm leading-7 text-[var(--color-secondary)] sm:text-[0.95rem]">
+              {post.excerpt}
+            </p>
+          </NavLink>
+
+          {actions}
+        </div>
+
+        <NavLink to={postPath} className="block min-h-44" aria-label={`Read ${post.title}`}>
+          <StoryArtwork post={post} className="h-full min-h-44 w-full" />
+        </NavLink>
+      </div>
+    </article>
   )
 }
 

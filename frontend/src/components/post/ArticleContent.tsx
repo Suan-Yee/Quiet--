@@ -6,7 +6,7 @@ type ArticleContentProps = {
 
 function ArticleContent({ blocks }: ArticleContentProps) {
   return (
-    <div className="py-8 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)] sm:py-10">
+    <div className="mx-auto max-w-[720px] py-10 font-reading text-[1.125rem] leading-[1.85] text-[var(--color-text)] sm:py-14 sm:text-[1.1875rem]">
       {blocks.map((block, index) => {
         if (block.type === 'paragraph') {
           return (
@@ -14,8 +14,8 @@ function ArticleContent({ blocks }: ArticleContentProps) {
               key={`${block.type}-${index}`}
               className={
                 block.lead
-                  ? 'mx-auto mb-7 max-w-[680px] text-lg leading-8 text-[var(--color-text)]'
-                  : 'mx-auto my-6 max-w-[680px] text-[1.0625rem] leading-8 text-[var(--color-text)]'
+                  ? 'mb-10 text-[1.3rem] leading-[1.75] text-[var(--color-secondary)] sm:text-[1.45rem]'
+                  : 'my-7'
               }
             >
               {block.text}
@@ -27,7 +27,7 @@ function ArticleContent({ blocks }: ArticleContentProps) {
           return (
             <h2
               key={`${block.type}-${index}`}
-              className="mx-auto mb-4 mt-10 max-w-[680px] font-reading text-xl font-bold leading-snug text-[var(--color-text)] sm:text-2xl"
+              className="mb-5 mt-14 font-reading text-3xl font-semibold leading-tight tracking-[-0.02em] text-[var(--color-text)] sm:text-4xl"
             >
               {block.text}
             </h2>
@@ -38,10 +38,10 @@ function ArticleContent({ blocks }: ArticleContentProps) {
           return (
             <blockquote
               key={`${block.type}-${index}`}
-              className="mx-auto my-8 max-w-[680px] border-l-4 border-[var(--color-border-soft)] bg-[var(--color-card-elevated)] px-5 py-4"
+              className="my-12 border-y border-[var(--color-border-soft)] py-8 text-center"
             >
-              <p className="font-reading text-lg italic leading-8 text-[var(--color-text)]">
-                "{block.text}"
+              <p className="font-reading text-2xl font-medium italic leading-[1.55] text-[var(--color-text)] sm:text-3xl">
+                “{block.text}”
               </p>
             </blockquote>
           )
@@ -51,14 +51,12 @@ function ArticleContent({ blocks }: ArticleContentProps) {
           return (
             <aside
               key={`${block.type}-${index}`}
-              className="mx-auto my-8 max-w-[680px] rounded-2xl border border-[#EBCAB8] bg-[#FFF1E8] px-5 py-4 dark:border-[#5A3828] dark:bg-[#2B1D16]"
+              className="my-10 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-soft-accent)] px-6 py-6 sm:px-8"
             >
-              <p className="text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-                Highlighted note
+              <p className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                Margin note
               </p>
-              <p className="mt-2 font-reading text-base leading-8 text-[var(--color-text)]">
-                {block.text}
-              </p>
+              <p className="mt-3 text-lg leading-8 text-[var(--color-text)]">{block.text}</p>
             </aside>
           )
         }
@@ -67,7 +65,7 @@ function ArticleContent({ blocks }: ArticleContentProps) {
           return (
             <div
               key={`${block.type}-${index}`}
-              className="mx-auto my-9 h-px w-full max-w-[680px] bg-[var(--color-border)]"
+              className="mx-auto my-14 h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"
               aria-hidden="true"
             />
           )
@@ -76,11 +74,10 @@ function ArticleContent({ blocks }: ArticleContentProps) {
         return (
           <ul
             key={`${block.type}-${index}`}
-            className="mx-auto my-7 max-w-[680px] space-y-3 border-l border-[var(--color-border)] pl-6 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)]"
+            className="my-9 list-disc space-y-4 pl-7 marker:text-[var(--color-accent)]"
           >
             {block.items.map((item) => (
-              <li key={item} className="relative pl-4">
-                <span className="absolute left-0 top-[0.8rem] h-1.5 w-1.5 rounded-full bg-[#FF6719]" />
+              <li key={item} className="pl-2">
                 {item}
               </li>
             ))}

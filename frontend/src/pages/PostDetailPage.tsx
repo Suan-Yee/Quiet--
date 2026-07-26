@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
-import { Bookmark, Heart, MessageCircle } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { ArrowRight, Bookmark, Heart, MessageCircle } from 'lucide-react'
 import { NavLink, useParams } from 'react-router'
-import { buttonStyles } from '../components/common/Button'
+import { buttonStyles } from '../components/common/buttonStyles'
 import EmptyState from '../components/common/EmptyState'
 import ArticleContent from '../components/post/ArticleContent'
 import CommentsPanel, { type CommentItem } from '../components/post/CommentsPanel'
 import TiptapContentRenderer from '../components/post/TiptapContentRenderer'
 import { mockArticleBlocks } from '../data/mockArticleDetails'
 import { mockPosts } from '../data/mockPosts'
+import type { MockPost } from '../types/post'
 import { getPostInteraction, savePostBookmark, savePostReaction } from '../utils/localInteractions'
 import { getLocalPosts } from '../utils/localPosts'
 import { formatPostDate, formatReadTime, getPrimaryTopic } from '../utils/postDisplay'
@@ -40,23 +41,322 @@ const mockComments: CommentItem[] = [
   },
 ]
 
+const actionButtonStyles =
+  'inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-card)]'
+
+type ReaderActionDockProps = {
+  isLiked: boolean
+  isBookmarked: boolean
+  reactionCount: number
+  commentCount: number
+  postTitle: string
+  onToggleLike: () => void
+  onToggleBookmark: () => void
+  onOpenDiscussion: () => void
+  mobile?: boolean
+}
+
+function ReaderActionDock({
+  isLiked,
+  isBookmarked,
+  reactionCount,
+  commentCount,
+  postTitle,
+  onToggleLike,
+  onToggleBookmark,
+  onOpenDiscussion,
+  mobile = false,
+}: ReaderActionDockProps) {
+  return (
+    <div
+      aria-label="Article actions"
+      className={
+        mobile
+          ? 'flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card)]/95 p-1.5 shadow-xl shadow-[rgb(var(--shadow-color)/0.16)] backdrop-blur'
+          : 'flex flex-col items-stretch gap-2'
+      }
+      role="group"
+    >
+      <button
+        type="button"
+        onClick={onToggleLike}
+        className={`${actionButtonStyles} ${
+          mobile ? 'px-3' : 'flex-col px-2 py-2'
+        } ${isLiked ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'}`}
+        aria-pressed={isLiked}
+        aria-label={isLiked ? `Remove love from ${postTitle}` : `Love ${postTitle}`}
+      >
+        <Heart
+          size={18}
+          aria-hidden="true"
+          className={isLiked ? 'fill-[var(--color-accent)]' : ''}
+        />
+        <span className={mobile ? '' : 'text-[0.6875rem]'} aria-live="polite">
+          {reactionCount}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenDiscussion}
+        className={`${actionButtonStyles} ${
+          mobile ? 'px-3' : 'flex-col px-2 py-2'
+        } text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]`}
+        aria-label={`Open comments, ${commentCount} comments`}
+        aria-haspopup="dialog"
+      >
+        <MessageCircle size={18} aria-hidden="true" />
+        <span className={mobile ? '' : 'text-[0.6875rem]'}>{commentCount}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleBookmark}
+        className={`${actionButtonStyles} ${
+          mobile ? 'px-3' : 'flex-col px-2 py-2'
+        } ${isBookmarked ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'}`}
+        aria-pressed={isBookmarked}
+        aria-label={isBookmarked ? `Remove bookmark for ${postTitle}` : `Bookmark ${postTitle}`}
+      >
+        <Bookmark
+          size={18}
+          aria-hidden="true"
+          className={isBookmarked ? 'fill-[var(--color-accent)]' : ''}
+        />
+        <span className={mobile ? 'sr-only' : 'text-[0.6875rem]'}>Save</span>
+      </button>
+    </div>
+  )
+}
+
+function PostReader({ post }: { post: MockPost }) {
+  const [isLiked, setIsLiked] = useState(() => {
+    const interaction = getPostInteraction(post.id)
+    return interaction.isReacted ?? post.isReacted
+  })
+  const [isBookmarked, setIsBookmarked] = useState(() => {
+    const interaction = getPostInteraction(post.id)
+    return interaction.isBookmarked ?? post.isBookmarked
+  })
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false)
+  const [comments, setComments] = useState<CommentItem[]>(mockComments)
+
+  const reactionCount =
+    post.reactionCount + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
+  const localCommentCount = comments.length - mockComments.length
+  const commentCount = post.commentCount + localCommentCount
+  const authorProfilePath = getAuthorProfilePath(post.author.name)
+  const primaryTopic = getPrimaryTopic(post.topics)
+  const hasRichContent = Boolean(post.contentJson?.content?.length)
+
+  const handleToggleLike = useCallback(() => {
+    setIsLiked((currentValue) => {
+      const nextValue = !currentValue
+      savePostReaction(post.id, nextValue)
+      return nextValue
+    })
+  }, [post.id])
+
+  const handleToggleBookmark = useCallback(() => {
+    setIsBookmarked((currentValue) => {
+      const nextValue = !currentValue
+      savePostBookmark(post.id, nextValue)
+      return nextValue
+    })
+  }, [post.id])
+
+  const handleOpenDiscussion = useCallback(() => setIsCommentsOpen(true), [])
+  const handleCloseDiscussion = useCallback(() => setIsCommentsOpen(false), [])
+  const handleAddComment = useCallback((body: string) => {
+    setComments((currentComments) => [
+      {
+        id: `local-comment-${Date.now()}`,
+        author: 'You',
+        initials: 'YO',
+        body,
+        time: 'Just now',
+        replies: [],
+      },
+      ...currentComments,
+    ])
+  }, [])
+
+  const actionDockProps = {
+    isLiked,
+    isBookmarked,
+    reactionCount,
+    commentCount,
+    postTitle: post.title,
+    onToggleLike: handleToggleLike,
+    onToggleBookmark: handleToggleBookmark,
+    onOpenDiscussion: handleOpenDiscussion,
+  }
+
+  return (
+    <div className="pb-28 lg:pb-20">
+      <article>
+        <header className="relative overflow-hidden border-b border-[var(--color-border-soft)] bg-[var(--color-brand-panel)] text-[var(--color-on-brand)]">
+          <div
+            className="pointer-events-none absolute -right-24 -top-36 h-96 w-96 rounded-full bg-[var(--color-highlight)]/10 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -bottom-48 left-[8%] h-96 w-96 rounded-full bg-[var(--color-on-brand)]/5 blur-3xl"
+            aria-hidden="true"
+          />
+          <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8 lg:pb-20 lg:pt-20">
+            <div className="max-w-[930px]">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-on-brand-muted)]">
+                <span className="text-[var(--color-highlight)]">Essay</span>
+                <span aria-hidden="true">•</span>
+                <span>{primaryTopic}</span>
+              </div>
+              <h1 className="mt-6 max-w-[900px] break-words font-reading text-[clamp(2.75rem,7vw,6.25rem)] font-medium leading-[0.98] tracking-[-0.04em]">
+                {post.title}
+              </h1>
+              <p className="mt-7 max-w-[760px] text-lg leading-8 text-[var(--color-on-brand-muted)] sm:text-xl sm:leading-9">
+                {post.excerpt}
+              </p>
+
+              <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-[var(--color-on-brand)]/15 pt-6">
+                <NavLink
+                  to={authorProfilePath}
+                  className="group inline-flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-highlight)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--color-brand-panel)]"
+                >
+                  <img
+                    src={post.author.profileImage}
+                    alt=""
+                    className="h-12 w-12 rounded-2xl object-cover ring-1 ring-[var(--color-on-brand)]/25 transition group-hover:ring-[var(--color-highlight)]"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-[var(--color-on-brand)]">
+                      {post.author.name}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[var(--color-on-brand-muted)]">
+                      {post.author.authorDescription}
+                    </span>
+                  </span>
+                </NavLink>
+                <span className="hidden h-8 w-px bg-[var(--color-on-brand)]/15 sm:block" aria-hidden="true" />
+                <p className="text-sm text-[var(--color-on-brand-muted)]">
+                  <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
+                  <span className="mx-2" aria-hidden="true">·</span>
+                  {formatReadTime(post.readTime)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {post.coverImage ? (
+          <figure className="mx-auto -mt-px w-full max-w-[1280px] px-0 sm:px-6 lg:px-8">
+            <img
+              src={post.coverImage}
+              alt={`Cover image for ${post.title}`}
+              className="aspect-[16/8] max-h-[620px] w-full bg-[var(--color-card-elevated)] object-cover sm:rounded-b-[2rem]"
+            />
+          </figure>
+        ) : null}
+
+        <div className="mx-auto grid w-full max-w-[1100px] justify-center gap-8 px-4 sm:px-6 lg:grid-cols-[120px_minmax(0,720px)] lg:px-8 xl:grid-cols-[120px_minmax(0,720px)_120px] xl:gap-12">
+          <aside className="hidden lg:block" aria-label="Article actions">
+            <div className="sticky top-28 pt-14">
+              <p className="mb-4 text-center text-[0.65rem] font-bold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                Keep close
+              </p>
+              <ReaderActionDock {...actionDockProps} />
+            </div>
+          </aside>
+
+          <div className="min-w-0">
+            <section aria-label="Article content">
+              {hasRichContent ? (
+                <TiptapContentRenderer content={post.contentJson} />
+              ) : (
+                <ArticleContent blocks={mockArticleBlocks} />
+              )}
+            </section>
+
+            <footer className="border-y border-[var(--color-border)] py-9 sm:py-11">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                  <img
+                    src={post.author.profileImage}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded-2xl object-cover ring-1 ring-[var(--color-border)]"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      Written by
+                    </p>
+                    <h2 className="mt-1 truncate font-reading text-2xl font-semibold text-[var(--color-text)]">
+                      {post.author.name}
+                    </h2>
+                  </div>
+                </div>
+                <NavLink to={authorProfilePath} className={buttonStyles('secondary', 'shrink-0 gap-2')}>
+                  Visit their desk
+                  <ArrowRight size={16} aria-hidden="true" />
+                </NavLink>
+              </div>
+              <p className="mt-5 max-w-[620px] text-sm leading-7 text-[var(--color-secondary)]">
+                {post.author.bio || post.author.authorDescription}
+              </p>
+            </footer>
+
+            <div className="py-10 text-center">
+              <p className="font-reading text-2xl font-semibold text-[var(--color-text)]">
+                What stayed with you?
+              </p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-secondary)]">
+                Continue the piece in a thoughtful conversation with other readers.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenDiscussion}
+                className={buttonStyles('primary', 'mt-5 gap-2')}
+                aria-haspopup="dialog"
+              >
+                Open the reading circle
+                <MessageCircle size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <aside className="hidden xl:block" aria-label="Article topics">
+            <div className="sticky top-28 pt-14">
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                Along this path
+              </p>
+              <ul className="mt-4 space-y-3 border-l border-[var(--color-border)] pl-4 text-xs font-semibold leading-5 text-[var(--color-secondary)]">
+                {post.topics.map((topic) => (
+                  <li key={topic.id}>{topic.name}</li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </article>
+
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 lg:hidden">
+        <ReaderActionDock {...actionDockProps} mobile />
+      </div>
+
+      {isCommentsOpen ? (
+        <CommentsPanel
+          comments={comments}
+          commentCount={commentCount}
+          onClose={handleCloseDiscussion}
+          onAddComment={handleAddComment}
+        />
+      ) : null}
+    </div>
+  )
+}
+
 function PostDetailPage() {
   const { postId } = useParams()
   const post = [...getLocalPosts(), ...mockPosts].find((item) => String(item.id) === postId)
-  const interaction = post ? getPostInteraction(post.id) : {}
-  const [isLiked, setIsLiked] = useState(interaction.isReacted ?? post?.isReacted ?? false)
-  const [isBookmarked, setIsBookmarked] = useState(interaction.isBookmarked ?? post?.isBookmarked ?? false)
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false)
-
-  useEffect(() => {
-    if (!post) {
-      return
-    }
-
-    const nextInteraction = getPostInteraction(post.id)
-    setIsLiked(nextInteraction.isReacted ?? post.isReacted)
-    setIsBookmarked(nextInteraction.isBookmarked ?? post.isBookmarked)
-  }, [post?.id])
 
   if (!post) {
     return (
@@ -64,10 +364,10 @@ function PostDetailPage() {
         <EmptyState
           eyebrow="Post not found"
           title="This post is not available"
-          description="The article may have moved, or the link may be incorrect. Return to the feed to keep reading."
+          description="The article may have moved, or the link may be incorrect. Return to discover another path."
           action={
             <NavLink to="/" className={buttonStyles('primary')}>
-              Back to feed
+              Back to discover
             </NavLink>
           }
         />
@@ -75,198 +375,7 @@ function PostDetailPage() {
     )
   }
 
-  const reactionCount =
-    post.reactionCount + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
-  const authorProfilePath = getAuthorProfilePath(post.author.name)
-  const primaryTopic = getPrimaryTopic(post.topics)
-  const desktopGridColumns = isCommentsOpen
-    ? 'xl:grid-cols-[200px_minmax(0,760px)_380px]'
-    : 'xl:grid-cols-[200px_760px_72px]'
-
-  return (
-    <div className="mx-auto w-full max-w-[1480px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <div className={`grid justify-center gap-8 transition-all duration-300 ${desktopGridColumns} 2xl:gap-10`}>
-        <aside className="hidden xl:block">
-          <div className="sticky top-28 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 p-4 shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Reading
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
-                <img
-                  src={post.author.profileImage}
-                  alt=""
-                  className="h-10 w-10 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
-                />
-              </NavLink>
-              <div className="min-w-0">
-                <NavLink
-                  to={authorProfilePath}
-                  className="block truncate text-sm font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent)]"
-                >
-                  {post.author.name}
-                </NavLink>
-                <p className="text-xs font-medium text-[var(--color-muted)]">{formatReadTime(post.readTime)}</p>
-              </div>
-            </div>
-            <div className="mt-5 space-y-3 border-t border-[var(--color-border)] pt-4 text-xs font-medium text-[var(--color-secondary)]">
-              <p>{formatPostDate(post.createdAt)}</p>
-              <p>{reactionCount} reactions</p>
-              <p>{post.commentCount} responses</p>
-            </div>
-            <NavLink
-              to={authorProfilePath}
-              className={buttonStyles('secondary', 'mt-5 w-full px-3 text-xs')}
-            >
-              View profile
-            </NavLink>
-          </div>
-        </aside>
-
-        <article className="min-w-0">
-          <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
-            <header className="p-6 pb-4 sm:p-8 sm:pb-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-                {primaryTopic}
-              </p>
-              <h1 className="mt-4 font-reading text-3xl font-bold leading-tight text-[var(--color-text)] sm:text-4xl">
-                {post.title}
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-secondary)] sm:text-lg sm:leading-8">
-                {post.excerpt}
-              </p>
-
-              <div className="mt-6 flex items-center gap-3 border-t border-[var(--color-border)] pt-5">
-                <NavLink to={authorProfilePath} aria-label={`View ${post.author.name}'s profile`}>
-                  <img
-                    src={post.author.profileImage}
-                    alt=""
-                    className="h-11 w-11 rounded-full object-cover ring-1 ring-[var(--color-border)] transition hover:ring-[var(--color-accent)]"
-                  />
-                </NavLink>
-                <div>
-                  <NavLink
-                    to={authorProfilePath}
-                    className="text-sm font-semibold text-[var(--color-text)] transition hover:text-[var(--color-accent)]"
-                  >
-                    {post.author.name}
-                  </NavLink>
-                  <p className="mt-0.5 text-xs font-medium text-[var(--color-muted)]">
-                    {formatPostDate(post.createdAt)} - {formatReadTime(post.readTime)}
-                  </p>
-                </div>
-              </div>
-
-              {post.coverImage ? (
-                <div className="mx-auto mt-6 max-w-[640px] overflow-hidden rounded-2xl bg-[var(--color-bg)]">
-                  <img
-                    src={post.coverImage}
-                    alt=""
-                    className="max-h-[320px] w-full object-cover"
-                  />
-                </div>
-              ) : null}
-            </header>
-
-            <div className="px-6 pb-2 sm:px-8">
-              {post.contentJson ? (
-                <TiptapContentRenderer content={post.contentJson} />
-              ) : (
-                <ArticleContent blocks={mockArticleBlocks} />
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm font-medium text-[var(--color-secondary)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsLiked((currentValue) => {
-                  const nextValue = !currentValue
-                  savePostReaction(post.id, nextValue)
-                  return nextValue
-                })}
-                className={`inline-flex h-9 items-center gap-2 rounded-full px-3 transition hover:bg-[#FFF1E8] ${
-                  isLiked ? 'text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
-                }`}
-                aria-pressed={isLiked}
-                aria-label={isLiked ? `Unlike ${post.title}` : `Like ${post.title}`}
-              >
-                <Heart
-                  size={17}
-                  aria-hidden="true"
-                  className={isLiked ? 'fill-[#FF6719]' : ''}
-                />
-                <span>{reactionCount}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsCommentsOpen(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-full px-3 transition hover:bg-[var(--color-soft-accent)] hover:text-[var(--color-text)]"
-                aria-label="Open comments"
-              >
-                <MessageCircle size={17} aria-hidden="true" />
-                {post.commentCount}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsBookmarked((currentValue) => {
-                  const nextValue = !currentValue
-                  savePostBookmark(post.id, nextValue)
-                  return nextValue
-                })}
-                className={`inline-flex h-9 items-center justify-center rounded-full px-3 transition hover:bg-[#FFF1E8] ${
-                  isBookmarked ? 'text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
-                }`}
-                aria-pressed={isBookmarked}
-                aria-label={isBookmarked ? `Remove bookmark for ${post.title}` : `Bookmark ${post.title}`}
-              >
-                <Bookmark
-                  size={17}
-                  aria-hidden="true"
-                  className={isBookmarked ? 'fill-[#FF6719]' : ''}
-                />
-              </button>
-            </div>
-
-            {!isCommentsOpen ? (
-              <span className="hidden text-xs font-medium text-[var(--color-muted)] xl:inline">
-                Comments hidden
-              </span>
-            ) : null}
-          </div>
-
-          <section className="mt-8 xl:hidden">
-            <CommentsPanel comments={mockComments} responseCount={post.commentCount} />
-          </section>
-        </article>
-
-        <aside className="hidden xl:block">
-          <div className="sticky top-28">
-            {isCommentsOpen ? (
-              <CommentsPanel
-                comments={mockComments}
-                responseCount={post.commentCount}
-                isCloseable
-                onClose={() => setIsCommentsOpen(false)}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsCommentsOpen(true)}
-                className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-card)] text-[var(--color-accent)] shadow-lg shadow-[#1F2933]/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--color-soft-accent)] hover:shadow-xl hover:shadow-[#FF6719]/20 dark:shadow-black/20"
-                aria-label={`Open comments, ${post.commentCount} responses`}
-              >
-                <MessageCircle size={22} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        </aside>
-      </div>
-    </div>
-  )
+  return <PostReader key={post.id} post={post} />
 }
 
 export default PostDetailPage

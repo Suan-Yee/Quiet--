@@ -28,7 +28,10 @@ function RichTextEditor({ content, onChange }: RichTextEditorProps) {
     editorProps: {
       attributes: {
         class:
-          'min-h-[520px] px-6 py-7 font-reading text-lg leading-9 text-[var(--color-text)] outline-none sm:px-8',
+          'mx-auto min-h-[620px] w-full max-w-[820px] px-5 py-9 font-reading text-[1.08rem] leading-9 text-[var(--color-text)] outline-none sm:px-10 sm:py-12',
+        'aria-label': 'Article body',
+        'aria-multiline': 'true',
+        role: 'textbox',
       },
     },
     onUpdate: ({ editor }) => {
@@ -37,7 +40,7 @@ function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   })
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 dark:shadow-black/10">
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-card)]">
       <EditorToolbar editor={editor} />
       <EditorContent editor={editor} />
     </div>

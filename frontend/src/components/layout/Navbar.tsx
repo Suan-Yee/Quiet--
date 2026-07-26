@@ -1,16 +1,23 @@
-import { Menu, Search, X } from 'lucide-react'
+import { BookOpenText, Compass, Menu, PenLine, Search, UserRound, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
-import quietLogo from '../../assets/quiet-logo.png'
-import { buttonStyles } from '../common/Button'
+import quietLogo from '../../assets/quiet-logo.svg'
+import { buttonStyles } from '../common/buttonStyles'
 import Container from '../common/Container'
 import ThemeToggle from '../common/ThemeToggle'
 
+const desktopNavItems = [
+  { label: 'Discover', to: '/', icon: Compass },
+  { label: 'My room', to: '/profile', icon: BookOpenText },
+]
+
 function Navbar() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(
+    () => new URLSearchParams(search).get('q') ?? '',
+  )
   const isAuthPage = pathname === '/login' || pathname === '/register'
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -23,99 +30,148 @@ function Navbar() {
 
   if (isAuthPage) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-transparent backdrop-blur-xl">
-        <Container className="flex h-[72px] items-center justify-between">
-          <NavLink to="/" className="group flex items-center gap-3 text-[var(--color-text)]">
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 transition group-hover:-translate-y-0.5 group-hover:border-[var(--color-border-soft)] dark:shadow-black/10">
-              <img src={quietLogo} alt="" className="h-full w-full object-cover" />
-            </span>
-            <span className="font-reading text-2xl font-bold leading-none">Quiet</span>
-          </NavLink>
-          <ThemeToggle />
+      <header className="relative z-50 border-b border-[var(--color-border)]/80 bg-[var(--color-bg)]/88 backdrop-blur-xl">
+        <Container className="flex h-[68px] items-center justify-between">
+          <BrandLink />
+          <div className="flex items-center gap-2">
+            <NavLink
+              to="/"
+              className="hidden min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold text-[var(--color-secondary)] transition hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)] sm:inline-flex"
+            >
+              <Compass aria-hidden="true" size={17} />
+              Explore
+            </NavLink>
+            <ThemeToggle />
+          </div>
         </Container>
       </header>
     )
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-transparent backdrop-blur-xl">
-      <Container className="grid h-[72px] grid-cols-[1fr_auto] items-center gap-4 md:grid-cols-[1fr_minmax(280px,460px)_1fr]">
-        <NavLink to="/" className="group flex items-center gap-3 text-[var(--color-text)]">
-          <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm shadow-[#1F2933]/5 transition group-hover:-translate-y-0.5 group-hover:border-[var(--color-border-soft)] dark:shadow-black/10">
-            <img src={quietLogo} alt="" className="h-full w-full object-cover" />
-          </span>
-          <span className="font-reading text-2xl font-bold leading-none">Quiet</span>
-        </NavLink>
+    <header className="sticky top-0 z-50 border-b border-[var(--color-border)]/80 bg-[var(--color-bg)]/88 backdrop-blur-2xl">
+      <Container className="flex h-[72px] items-center gap-4">
+        <BrandLink />
+
+        <nav className="ml-5 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+          {desktopNavItems.map(({ label, to, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) =>
+                `inline-flex min-h-11 items-center gap-2 rounded-xl px-3.5 text-sm font-bold transition ${
+                  isActive
+                    ? 'bg-[var(--color-card-elevated)] text-[var(--color-text)]'
+                    : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'
+                }`
+              }
+            >
+              <Icon aria-hidden="true" size={17} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
 
         <form
-          className="hidden h-11 items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-input)]/90 px-4 text-[var(--color-secondary)] shadow-sm shadow-[#1F2933]/5 transition focus-within:border-[var(--color-accent)] dark:shadow-black/10 md:flex"
+          className="ml-auto hidden h-11 w-full max-w-[300px] items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-input)] px-3.5 text-[var(--color-secondary)] transition focus-within:border-[var(--color-accent)] focus-within:ring-2 focus-within:ring-[var(--color-soft-accent)] md:flex"
           onSubmit={handleSearchSubmit}
         >
-          <Search size={16} aria-hidden="true" />
+          <Search size={17} aria-hidden="true" />
           <input
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search writers and posts"
-            className="w-full bg-transparent text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)]"
+            placeholder="Search the reading room"
+            aria-label="Search stories and writers"
+            className="w-full bg-transparent text-sm font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)]"
           />
         </form>
 
-        <nav className="flex items-center justify-end gap-2 text-sm font-medium">
-          <span className="hidden sm:block">
-            <NavLink to="/create" className={buttonStyles('primary', 'px-5')}>
-              Write
-            </NavLink>
-          </span>
-          <NavLink to="/profile" className={buttonStyles('ghost', 'px-3')}>
-            Profile
+        <nav className="flex items-center gap-2" aria-label="Account actions">
+          <NavLink to="/create" className={buttonStyles('primary', 'hidden gap-2 px-4 sm:inline-flex')}>
+            <PenLine aria-hidden="true" size={16} />
+            Write
+          </NavLink>
+          <NavLink
+            to="/profile"
+            aria-label="Open profile"
+            className="hidden h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text)] transition hover:-translate-y-0.5 hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] sm:inline-flex"
+          >
+            <UserRound aria-hidden="true" size={18} />
           </NavLink>
           <ThemeToggle />
           <button
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text)] shadow-sm shadow-[#1F2933]/5 transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] dark:shadow-black/10 md:hidden"
+            aria-expanded={isMobileMenuOpen}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text)] transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] lg:hidden"
             type="button"
             onClick={() => setIsMobileMenuOpen((currentValue) => !currentValue)}
           >
-            {isMobileMenuOpen ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
+            {isMobileMenuOpen ? <X aria-hidden="true" size={19} /> : <Menu aria-hidden="true" size={19} />}
           </button>
         </nav>
       </Container>
 
       {isMobileMenuOpen ? (
-        <Container className="pb-4 md:hidden">
+        <Container className="border-t border-[var(--color-border)] py-4 lg:hidden">
           <form
-            className="flex h-11 items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-input)] px-4 text-[var(--color-secondary)] shadow-sm shadow-[#1F2933]/5 transition focus-within:border-[var(--color-accent)] dark:shadow-black/10"
+            className="flex h-11 items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-input)] px-3.5 text-[var(--color-secondary)] transition focus-within:border-[var(--color-accent)] focus-within:ring-2 focus-within:ring-[var(--color-soft-accent)] md:hidden"
             onSubmit={handleSearchSubmit}
           >
-            <Search size={16} aria-hidden="true" />
+            <Search size={17} aria-hidden="true" />
             <input
               type="search"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search posts"
-              className="w-full bg-transparent text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)]"
+              placeholder="Search stories and writers"
+              aria-label="Search stories and writers"
+              className="w-full bg-transparent text-sm font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)]"
             />
           </form>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-semibold">
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {desktopNavItems.map(({ label, to, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold text-[var(--color-secondary)] transition hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Icon aria-hidden="true" size={17} />
+                {label}
+              </NavLink>
+            ))}
             <NavLink
               to="/create"
-              className={buttonStyles('primary', 'px-4')}
+              className={buttonStyles('primary', 'gap-2')}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Write
-            </NavLink>
-            <NavLink
-              to="/profile"
-              className={buttonStyles('secondary', 'px-4')}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Profile
+              <PenLine aria-hidden="true" size={16} />
+              Write something
             </NavLink>
           </div>
         </Container>
       ) : null}
     </header>
+  )
+}
+
+function BrandLink() {
+  return (
+    <NavLink to="/" className="group flex shrink-0 items-center gap-2.5 text-[var(--color-text)]">
+      <img
+        src={quietLogo}
+        alt=""
+        className="h-10 w-10 rounded-xl transition duration-200 group-hover:-rotate-2 group-hover:scale-[1.03]"
+      />
+      <span>
+        <span className="block text-lg font-extrabold leading-none tracking-[-0.04em]">Quiet</span>
+        <span className="mt-1 hidden text-[0.62rem] font-bold uppercase tracking-[0.18em] text-[var(--color-muted)] xl:block">
+          Reading room
+        </span>
+      </span>
+    </NavLink>
   )
 }
 

@@ -15,14 +15,10 @@ type CustomDropdownProps = {
 
 function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(0)
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value))
+  const [activeIndex, setActiveIndex] = useState(selectedIndex)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const selectedOption = options.find((option) => option.value === value) ?? options[0]
-
-  useEffect(() => {
-    const selectedIndex = options.findIndex((option) => option.value === value)
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
-  }, [options, value])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -41,7 +37,13 @@ function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps
       <p className="text-sm font-semibold text-[var(--color-text)]">{label}</p>
       <button
         type="button"
-        onClick={() => setIsOpen((currentValue) => !currentValue)}
+        onClick={() => {
+          if (!isOpen) {
+            setActiveIndex(selectedIndex)
+          }
+
+          setIsOpen((currentValue) => !currentValue)
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
             setIsOpen(false)
@@ -50,13 +52,17 @@ function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps
           if (event.key === 'ArrowDown') {
             event.preventDefault()
             setIsOpen(true)
-            setActiveIndex((currentIndex) => Math.min(currentIndex + 1, options.length - 1))
+            setActiveIndex((currentIndex) =>
+              Math.min((isOpen ? currentIndex : selectedIndex) + 1, options.length - 1),
+            )
           }
 
           if (event.key === 'ArrowUp') {
             event.preventDefault()
             setIsOpen(true)
-            setActiveIndex((currentIndex) => Math.max(currentIndex - 1, 0))
+            setActiveIndex((currentIndex) =>
+              Math.max((isOpen ? currentIndex : selectedIndex) - 1, 0),
+            )
           }
 
           if (event.key === 'Enter' || event.key === ' ') {
@@ -70,7 +76,7 @@ function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps
             }
           }
         }}
-        className="mt-2 flex h-11 w-full items-center justify-between gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-input)] px-4 text-left text-sm font-medium text-[var(--color-text)] outline-none transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] focus:border-[var(--color-accent)]"
+        className="mt-2 flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-input)] px-4 text-left text-sm font-semibold text-[var(--color-text)] outline-none transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-soft-accent)]"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -84,7 +90,7 @@ function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps
 
       {isOpen ? (
         <div
-          className="theme-scrollbar absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-lg shadow-[#1F2933]/10 dark:shadow-black/20"
+          className="theme-scrollbar absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl shadow-[rgb(var(--shadow-color)/0.16)]"
           role="listbox"
         >
           {options.map((option, index) => {
@@ -100,7 +106,7 @@ function CustomDropdown({ label, value, options, onChange }: CustomDropdownProps
                   setIsOpen(false)
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${
                   isSelected
                     ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]'
                     : isActive

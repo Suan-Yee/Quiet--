@@ -193,7 +193,7 @@ function InlineImagePanel({ editor, imageCount, onClose }: InlineImagePanelProps
       </div>
 
       {isAtLimit ? (
-        <p className="mt-4 rounded-2xl border border-[#EBCAB8] bg-[var(--color-soft-accent)] px-4 py-3 text-sm font-medium text-[var(--color-text)]">
+        <p className="mt-4 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-medium text-[var(--color-text)]">
           You have reached the limit of {MAX_INLINE_IMAGES} inline images. Remove one from the article before adding another.
         </p>
       ) : (
@@ -279,7 +279,7 @@ function InlineImagePanel({ editor, imageCount, onClose }: InlineImagePanelProps
       )}
 
       {error ? (
-        <p role="alert" className="mt-3 text-sm font-medium text-[#B54708] dark:text-[#FFB37A]">
+        <p role="alert" className="mt-3 text-sm font-semibold text-[var(--color-danger)]">
           {error}
         </p>
       ) : null}

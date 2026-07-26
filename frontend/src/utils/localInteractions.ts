@@ -1,6 +1,7 @@
 type PostInteraction = {
   isReacted?: boolean
   isBookmarked?: boolean
+  isReposted?: boolean
 }
 
 const LOCAL_INTERACTIONS_KEY = 'quiet-pages-post-interactions'
@@ -44,6 +45,16 @@ export function savePostBookmark(postId: PostId, isBookmarked: boolean) {
   interactions[id] = {
     ...interactions[id],
     isBookmarked,
+  }
+  saveInteractions(interactions)
+}
+
+export function savePostRepost(postId: PostId, isReposted: boolean) {
+  const interactions = getInteractions()
+  const id = String(postId)
+  interactions[id] = {
+    ...interactions[id],
+    isReposted,
   }
   saveInteractions(interactions)
 }

@@ -5,19 +5,70 @@ type TiptapContentRendererProps = {
   content: JSONContent
 }
 
+function getNodeText(node: JSONContent): string {
+  if (node.type === 'text') {
+    return node.text ?? ''
+  }
+
+  return node.content?.map(getNodeText).join('') ?? ''
+}
+
+function getSafeHref(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const href = value.trim()
+
+  if (/^(https?:|mailto:|#|\/)/i.test(href)) {
+    return href
+  }
+
+  return undefined
+}
+
 function renderMarks(text: string, marks: JSONContent['marks'] = [], showHighlight = true) {
   return marks.reduce<ReactNode>((currentValue, mark) => {
     if (mark.type === 'bold') {
-      return <strong>{currentValue}</strong>
+      return <strong className="font-semibold">{currentValue}</strong>
     }
 
     if (mark.type === 'italic') {
       return <em>{currentValue}</em>
     }
 
+    if (mark.type === 'strike') {
+      return <s>{currentValue}</s>
+    }
+
+    if (mark.type === 'code') {
+      return (
+        <code className="rounded-md bg-[var(--color-card-elevated)] px-1.5 py-0.5 font-mono text-[0.88em] text-[var(--color-text)]">
+          {currentValue}
+        </code>
+      )
+    }
+
+    if (mark.type === 'link') {
+      const href = getSafeHref(mark.attrs?.href)
+
+      if (!href) {
+        return currentValue
+      }
+
+      return (
+        <a
+          href={href}
+          className="font-medium text-[var(--color-accent)] underline decoration-[var(--color-border-soft)] decoration-2 underline-offset-4 transition hover:decoration-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        >
+          {currentValue}
+        </a>
+      )
+    }
+
     if (mark.type === 'highlight' && showHighlight) {
       return (
-        <mark className="rounded bg-[var(--color-soft-accent)] px-1 text-[var(--color-text)] dark:bg-[#6A3A22] dark:text-[#FFF7F0]">
+        <mark className="rounded bg-[var(--color-highlight)] px-1 text-[var(--color-brand-panel)]">
           {currentValue}
         </mark>
       )
@@ -54,7 +105,37 @@ function isHighlightedNote(node: JSONContent) {
   )
 }
 
-function renderBlock(node: JSONContent, index: number) {
+function renderList(node: JSONContent, index: number, isNested = false) {
+  const ListTag = node.type === 'orderedList' ? 'ol' : 'ul'
+  const listStyle = node.type === 'orderedList' ? 'list-decimal' : 'list-disc'
+
+  return (
+    <ListTag
+      key={index}
+      className={`${listStyle} space-y-3 pl-7 marker:font-sans marker:font-semibold marker:text-[var(--color-accent)] ${
+        isNested ? 'mt-3 text-[0.96em]' : 'my-9'
+      }`}
+    >
+      {node.content?.map((item, itemIndex) => (
+        <li key={itemIndex} className="pl-2">
+          {item.content?.map((childNode, childIndex) => {
+            if (childNode.type === 'paragraph') {
+              return <span key={childIndex}>{renderInline(childNode.content)}</span>
+            }
+
+            if (childNode.type === 'bulletList' || childNode.type === 'orderedList') {
+              return renderList(childNode, childIndex, true)
+            }
+
+            return renderBlock(childNode, childIndex)
+          })}
+        </li>
+      ))}
+    </ListTag>
+  )
+}
+
+function renderBlock(node: JSONContent, index: number): ReactNode {
   if (node.type === 'paragraph') {
     const isEmpty = !node.content?.length
 
@@ -62,12 +143,12 @@ function renderBlock(node: JSONContent, index: number) {
       return (
         <aside
           key={index}
-          className="mx-auto my-8 max-w-[680px] rounded-2xl border border-[#EBCAB8] bg-[#FFF1E8] px-5 py-4 dark:border-[#5A3828] dark:bg-[#2B1D16]"
+          className="my-10 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-soft-accent)] px-6 py-6 sm:px-8"
         >
-          <p className="text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Highlighted note
+          <p className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            Margin note
           </p>
-          <p className="mt-2 font-reading text-base leading-8 text-[var(--color-text)]">
+          <p className="mt-3 text-lg leading-8 text-[var(--color-text)]">
             {renderInline(node.content, false)}
           </p>
         </aside>
@@ -79,8 +160,8 @@ function renderBlock(node: JSONContent, index: number) {
         key={index}
         className={
           index === 0
-            ? 'mx-auto mb-7 max-w-[680px] text-lg leading-8'
-            : 'mx-auto my-6 max-w-[680px] text-[1.0625rem] leading-8'
+            ? 'mb-10 text-[1.3rem] leading-[1.75] text-[var(--color-secondary)] sm:text-[1.45rem]'
+            : 'my-7'
         }
       >
         {isEmpty ? <br /> : renderInline(node.content)}
@@ -89,18 +170,31 @@ function renderBlock(node: JSONContent, index: number) {
   }
 
   if (node.type === 'heading') {
-    const level = node.attrs?.level
+    const level = Number(node.attrs?.level)
+    const headingText = getNodeText(node)
+    const headingId = `${headingText
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'section'}-${index}`
 
-    if (level === 3) {
+    if (level >= 3) {
       return (
-        <h3 key={index} className="mx-auto mb-3 mt-9 max-w-[680px] font-reading text-lg font-bold leading-snug text-[var(--color-text)] sm:text-xl">
+        <h3
+          key={index}
+          id={headingId}
+          className="mb-4 mt-12 scroll-mt-28 font-reading text-2xl font-semibold leading-tight tracking-[-0.015em] text-[var(--color-text)] sm:text-3xl"
+        >
           {renderInline(node.content)}
         </h3>
       )
     }
 
     return (
-      <h2 key={index} className="mx-auto mb-4 mt-10 max-w-[680px] font-reading text-xl font-bold leading-snug text-[var(--color-text)] sm:text-2xl">
+      <h2
+        key={index}
+        id={headingId}
+        className="mb-5 mt-14 scroll-mt-28 font-reading text-3xl font-semibold leading-tight tracking-[-0.02em] text-[var(--color-text)] sm:text-4xl"
+      >
         {renderInline(node.content)}
       </h2>
     )
@@ -110,55 +204,57 @@ function renderBlock(node: JSONContent, index: number) {
     return (
       <blockquote
         key={index}
-        className="mx-auto my-8 max-w-[680px] border-l-4 border-[var(--color-border-soft)] bg-[var(--color-card-elevated)] px-5 py-4 font-reading text-lg italic leading-8 text-[var(--color-text)]"
+        className="my-12 border-y border-[var(--color-border-soft)] py-8 text-center font-reading text-2xl font-medium italic leading-[1.55] text-[var(--color-text)] sm:text-3xl"
       >
         {node.content?.map((childNode, childIndex) => (
-          <div key={childIndex}>{renderInline(childNode.content)}</div>
+          <p key={childIndex}>{renderInline(childNode.content)}</p>
         ))}
       </blockquote>
     )
   }
 
   if (node.type === 'bulletList' || node.type === 'orderedList') {
-    const ListTag = node.type === 'bulletList' ? 'ul' : 'ol'
-
-    return (
-      <ListTag
-        key={index}
-        className={`mx-auto my-7 max-w-[680px] space-y-3 border-l border-[var(--color-border)] pl-6 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)] ${
-          node.type === 'orderedList' ? 'list-decimal' : ''
-        }`}
-      >
-        {node.content?.map((item, itemIndex) => (
-          <li key={itemIndex} className={node.type === 'bulletList' ? 'relative pl-4' : 'ml-5 pl-2'}>
-            {node.type === 'bulletList' ? (
-              <span className="absolute left-0 top-[0.8rem] h-1.5 w-1.5 rounded-full bg-[#FF6719]" />
-            ) : null}
-            {item.content?.map((childNode, childIndex) => (
-              <span key={childIndex}>{renderInline(childNode.content)}</span>
-            ))}
-          </li>
-        ))}
-      </ListTag>
-    )
+    return renderList(node, index)
   }
 
   if (node.type === 'horizontalRule') {
-    return <div key={index} className="mx-auto my-9 h-px w-full max-w-[680px] bg-[var(--color-border)]" aria-hidden="true" />
+    return (
+      <div key={index} className="my-14 flex justify-center" aria-hidden="true">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+      </div>
+    )
+  }
+
+  if (node.type === 'codeBlock') {
+    return (
+      <pre
+        key={index}
+        className="theme-scrollbar my-9 overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-brand-panel)] p-5 text-sm leading-7 text-[var(--color-on-brand)]"
+      >
+        <code>{getNodeText(node)}</code>
+      </pre>
+    )
   }
 
   if (node.type === 'image') {
     const caption = typeof node.attrs?.title === 'string' ? node.attrs.title.trim() : ''
+    const src = typeof node.attrs?.src === 'string' ? node.attrs.src : ''
+
+    if (!src) {
+      return null
+    }
 
     return (
-      <figure key={index} className="mx-auto my-9 max-w-[640px]">
+      <figure key={index} className="my-12">
         <img
-          src={node.attrs?.src}
-          alt={node.attrs?.alt ?? ''}
-          className="max-h-[32rem] w-full rounded-2xl bg-[var(--color-bg)] object-contain"
+          src={src}
+          alt={typeof node.attrs?.alt === 'string' ? node.attrs.alt : ''}
+          loading="lazy"
+          decoding="async"
+          className="max-h-[36rem] w-full rounded-3xl bg-[var(--color-card-elevated)] object-contain"
         />
         {caption ? (
-          <figcaption className="mx-auto mt-2 max-w-[680px] px-2 text-center font-sans text-sm leading-6 text-[var(--color-secondary)]">
+          <figcaption className="mx-auto mt-3 max-w-[40rem] px-2 text-center font-sans text-sm leading-6 text-[var(--color-secondary)]">
             {caption}
           </figcaption>
         ) : null}
@@ -166,13 +262,13 @@ function renderBlock(node: JSONContent, index: number) {
     )
   }
 
-  return <div key={index}>{node.content?.map(renderBlock)}</div>
+  return <div key={index}>{node.content?.map((childNode, childIndex) => renderBlock(childNode, childIndex))}</div>
 }
 
 function TiptapContentRenderer({ content }: TiptapContentRendererProps) {
   return (
-    <div className="py-8 font-reading text-[1.0625rem] leading-8 text-[var(--color-text)] sm:py-10">
-      {content.content?.map(renderBlock)}
+    <div className="mx-auto max-w-[720px] py-10 font-reading text-[1.125rem] leading-[1.85] text-[var(--color-text)] sm:py-14 sm:text-[1.1875rem]">
+      {content.content?.map((node, index) => renderBlock(node, index))}
     </div>
   )
 }

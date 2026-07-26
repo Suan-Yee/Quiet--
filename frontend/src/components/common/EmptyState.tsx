@@ -11,9 +11,9 @@ type EmptyStateProps = {
 
 function EmptyState({ eyebrow = 'Nothing here yet', title, description, action, className = '' }: EmptyStateProps) {
   return (
-    <Card className={`mx-auto max-w-xl p-8 text-center sm:p-10 ${className}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">{eyebrow}</p>
-      <h2 className="mt-3 font-reading text-3xl font-bold leading-tight text-[var(--color-text)]">
+    <Card className={`mx-auto max-w-xl border-dashed p-8 text-center sm:p-10 ${className}`}>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent)]">{eyebrow}</p>
+      <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-[-0.035em] text-[var(--color-text)]">
         {title}
       </h2>
       {description ? (
