@@ -1,7 +1,15 @@
-import { Outlet } from 'react-router'
+import { useLayoutEffect } from 'react'
+import { Outlet, useLocation } from 'react-router'
+import { finishRouteTransition } from '../../utils/routeTransition'
 import Navbar from './Navbar'
 
 function AppLayout() {
+  const location = useLocation()
+
+  useLayoutEffect(() => {
+    finishRouteTransition()
+  }, [location.key])
+
   return (
     <div className="relative min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
       <div
@@ -10,7 +18,9 @@ function AppLayout() {
       />
       <Navbar />
       <main className="relative z-10">
-        <Outlet />
+        <div key={location.key} className="route-transition">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

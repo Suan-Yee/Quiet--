@@ -3,9 +3,11 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
+  type MouseEvent,
 } from 'react'
 import {
+  ArrowUpRight,
+  BookOpenText,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -16,8 +18,12 @@ import {
   X,
 } from 'lucide-react'
 import { createPortal } from 'react-dom'
-import { NavLink } from 'react-router'
-import type { MockPost, PostMedia } from '../../types/post'
+import { NavLink, useLocation, useNavigate } from 'react-router'
+import { getMockComments } from '../../data/mockComments'
+import type { MockPost, PostMedia, PostMediaLayout } from '../../types/post'
+import { scrollToCommentsSection } from '../../utils/commentNavigation'
+import { getLocalComments, saveLocalComment } from '../../utils/localComments'
+import type { CommentContent } from '../../types/comment'
 import {
   getPostInteraction,
   savePostBookmark,
@@ -29,12 +35,28 @@ import {
   getPostMedia,
   getPostType,
   isPostEdited,
+  shouldCollapsePostBody,
 } from '../../utils/normalPost'
-import { formatPostDate, getPostPath } from '../../utils/postDisplay'
+import {
+  getEffectivePostMediaLayout,
+  getPostMediaGridClass,
+  getPostMediaTileClass,
+} from '../../utils/postMediaLayout'
+import {
+  formatPostDate,
+  formatReadTime,
+  getPostPath,
+  getPrimaryTopic,
+} from '../../utils/postDisplay'
+import { saveFeedReturnState } from '../../utils/feedReturn'
 import { getAuthorProfilePath } from '../../utils/profileLinks'
+import { transitionToRoute } from '../../utils/routeTransition'
+import CommentsPanel from './CommentsPanel'
+import PostMediaFrameImage from './PostMediaFrameImage'
 
 type NormalPostProps = {
   post: MockPost
+  variant?: 'feed' | 'detail'
 }
 
 const actionStyles =
@@ -161,12 +183,19 @@ function MediaLightbox({ media, initialIndex, onClose }: MediaLightboxProps) {
           ) : null}
 
           <figure className="flex h-full w-full flex-col items-center justify-center gap-5">
-            <img
-              key={activeItem.id}
-              src={activeItem.url}
-              alt={activeItem.alt}
-              className="max-h-[68dvh] max-w-[calc(100vw-6rem)] rounded-xl object-contain shadow-2xl shadow-black/25 sm:max-w-[min(76vw,980px)]"
-            />
+            <div className="relative inline-flex max-h-[68dvh] max-w-[calc(100vw-6rem)] overflow-hidden rounded-xl shadow-2xl shadow-black/25 sm:max-w-[min(76vw,980px)]">
+              <img
+                key={activeItem.id}
+                src={activeItem.url}
+                alt={activeItem.alt}
+                className="max-h-[68dvh] max-w-full object-contain"
+              />
+              {activeItem.label?.trim() ? (
+                <span className="absolute inset-x-0 bottom-0 bg-black/50 px-4 py-3 text-left text-sm font-semibold leading-5 text-white backdrop-blur-sm sm:text-base">
+                  {activeItem.label}
+                </span>
+              ) : null}
+            </div>
 
             {hasMultipleImages ? (
               <div
@@ -210,7 +239,17 @@ function MediaLightbox({ media, initialIndex, onClose }: MediaLightboxProps) {
   )
 }
 
-function PostMediaGrid({ media }: { media: PostMedia[] }) {
+type PostMediaGridProps = {
+  media: PostMedia[]
+  layout?: PostMediaLayout
+  compact?: boolean
+}
+
+function PostMediaGrid({
+  compact = false,
+  media,
+  layout = 'grid',
+}: PostMediaGridProps) {
   const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null)
   const closeLightbox = useCallback(() => setActiveMediaIndex(null), [])
 
@@ -227,15 +266,20 @@ function PostMediaGrid({ media }: { media: PostMedia[] }) {
           type="button"
           onClick={() => setActiveMediaIndex(0)}
           aria-label="Open post image"
-          className="group mt-5 block w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+          className={`group relative mr-auto block aspect-video w-full max-w-[640px] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${compact ? 'mt-4' : 'mt-5'}`}
         >
-          <img
+          <PostMediaFrameImage
             src={item.url}
             alt={item.alt}
             loading="lazy"
             decoding="async"
-            className="max-h-[680px] w-full object-cover transition duration-300 group-hover:scale-[1.015]"
+            interactive
           />
+          {item.label?.trim() ? (
+            <span className="absolute inset-x-0 bottom-0 z-10 bg-black/50 px-3 py-2.5 text-left text-xs font-semibold leading-5 text-white backdrop-blur-sm sm:px-4 sm:py-3 sm:text-sm">
+              {item.label}
+            </span>
+          ) : null}
         </button>
 
         {activeMediaIndex !== null ? (
@@ -253,23 +297,27 @@ function PostMediaGrid({ media }: { media: PostMedia[] }) {
   const hasHiddenMedia = media.length > compactMediaLimit
   const visibleMedia = media.slice(0, compactMediaLimit)
   const hiddenMediaCount = media.length - compactMediaLimit
+  const effectiveLayout = getEffectivePostMediaLayout(layout, media.length)
 
   return (
     <>
       <ul
-        className="mt-5 grid grid-cols-2 gap-1.5 overflow-hidden rounded-2xl bg-[var(--color-border)] p-1.5"
+        className={`mr-auto grid aspect-video w-full max-w-[640px] ${getPostMediaGridClass(effectiveLayout, visibleMedia.length)} gap-1.5 overflow-hidden rounded-2xl bg-[var(--color-border)] p-1.5 ${compact ? 'mt-4' : 'mt-5'}`}
         aria-label={`${media.length} attached images`}
       >
         {visibleMedia.map((item, index) => {
           const isRevealTile =
             hasHiddenMedia && index === compactMediaLimit - 1
+          const slotClass = getPostMediaTileClass(
+            effectiveLayout,
+            visibleMedia.length,
+            index,
+          )
 
           return (
             <li
               key={item.id}
-              className={`relative overflow-hidden rounded-xl ${
-                visibleMedia.length === 3 && index === 2 ? 'col-span-2' : ''
-              }`}
+              className={`relative h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-[var(--color-card-elevated)] ${slotClass}`}
             >
               <button
                 type="button"
@@ -279,18 +327,23 @@ function PostMediaGrid({ media }: { media: PostMedia[] }) {
                     ? `Open image ${index + 1} of ${media.length}; ${hiddenMediaCount} more images`
                     : `Open image ${index + 1} of ${media.length}`
                 }
-                className="group relative block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-highlight)]"
+                className="group relative block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-highlight)]"
               >
-                <img
+                <PostMediaFrameImage
                   src={item.url}
                   alt={item.alt}
                   loading="lazy"
                   decoding="async"
-                  className="h-40 w-full bg-[var(--color-card-elevated)] object-cover transition duration-300 group-hover:scale-[1.025] sm:h-52"
+                  interactive
                 />
                 {isRevealTile ? (
-                  <span className="absolute inset-0 flex items-center justify-center bg-[var(--color-brand-panel)]/68 text-2xl font-extrabold text-[var(--color-on-brand)] backdrop-blur-[2px] transition group-hover:bg-[var(--color-brand-panel)]/76">
+                  <span className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--color-brand-panel)]/68 text-2xl font-extrabold text-[var(--color-on-brand)] backdrop-blur-[2px] transition group-hover:bg-[var(--color-brand-panel)]/76">
                     +{hiddenMediaCount}
+                  </span>
+                ) : null}
+                {!isRevealTile && item.label?.trim() ? (
+                  <span className="absolute inset-x-0 bottom-0 z-10 bg-black/50 px-3 py-2 text-left text-xs font-semibold leading-4 text-white backdrop-blur-sm">
+                    {item.label}
                   </span>
                 ) : null}
               </button>
@@ -310,30 +363,38 @@ function PostMediaGrid({ media }: { media: PostMedia[] }) {
   )
 }
 
-function NormalPost({ post }: NormalPostProps) {
+function NormalPost({ post, variant = 'feed' }: NormalPostProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const interaction = getPostInteraction(post.id)
   const [isLoved, setIsLoved] = useState(interaction.isReacted ?? post.isReacted)
   const [isSaved, setIsSaved] = useState(interaction.isBookmarked ?? post.isBookmarked)
   const [isReposted, setIsReposted] = useState(
     interaction.isReposted ?? post.isReposted ?? false,
   )
-  const [isCommenting, setIsCommenting] = useState(false)
-  const [commentDraft, setCommentDraft] = useState('')
-  const [localCommentCount, setLocalCommentCount] = useState(0)
+  const [localComments, setLocalComments] = useState(() => getLocalComments(post.id))
   const [shareStatus, setShareStatus] = useState('')
+  const [isBodyExpanded, setIsBodyExpanded] = useState(false)
 
   const postType = getPostType(post)
+  const isArticle = postType === 'article'
   const body = getPostBody(post)
-  const media = getPostMedia(post)
+  const media = isArticle ? [] : getPostMedia(post)
+  const isMixedNormalPost =
+    postType === 'normal' && Boolean(body) && media.length > 0
+  const canCollapseBody =
+    variant === 'feed' && shouldCollapsePostBody(body, isMixedNormalPost)
   const authorProfilePath = getAuthorProfilePath(post.author.name)
   const postPath = getPostPath(post)
-  const commentFormId = `comment-form-${post.id}`
+  const primaryTopic = getPrimaryTopic(post.topics)
+  const feedPath = `${location.pathname}${location.search}`
+  const isOpenedFromFeed = location.pathname === '/'
   const interactionName = post.title.trim() || `${post.author.name}'s post`
   const loveCount =
     post.reactionCount
     + (isLoved && !post.isReacted ? 1 : 0)
     - (!isLoved && post.isReacted ? 1 : 0)
-  const commentCount = post.commentCount + localCommentCount
+  const commentCount = post.commentCount + localComments.length
   const originalRepostState = post.isReposted ?? false
   const repostCount =
     (post.repostCount ?? 0)
@@ -364,15 +425,22 @@ function NormalPost({ post }: NormalPostProps) {
     })
   }
 
-  function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function handleAddComment(content: CommentContent) {
+    const comment = saveLocalComment(post.id, content)
+    setLocalComments((currentComments) => [comment, ...currentComments])
+  }
 
-    if (!commentDraft.trim()) {
-      return
-    }
-
-    setLocalCommentCount((currentValue) => currentValue + 1)
-    setCommentDraft('')
+  function handleAddReply(
+    parentId: string,
+    content: CommentContent,
+    replyToId: string | null = null,
+  ) {
+    const reply = saveLocalComment(post.id, {
+      ...content,
+      parentId,
+      replyToId,
+    })
+    setLocalComments((currentComments) => [reply, ...currentComments])
   }
 
   async function handleShare() {
@@ -405,9 +473,82 @@ function NormalPost({ post }: NormalPostProps) {
     }
   }
 
+  function handlePostOpen() {
+    if (!isOpenedFromFeed) {
+      return
+    }
+
+    window.history.scrollRestoration = 'manual'
+    saveFeedReturnState({
+      path: feedPath,
+      scrollY: window.scrollY,
+    })
+  }
+
+  function openPost(scrollToComments = false) {
+    handlePostOpen()
+    transitionToRoute(() => {
+      navigate(postPath, {
+        state: isOpenedFromFeed
+          ? { fromFeed: true, feedPath, scrollToComments }
+          : location.state,
+      })
+    })
+  }
+
+  function handlePostLinkClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.button !== 0
+      || event.metaKey
+      || event.ctrlKey
+      || event.shiftKey
+      || event.altKey
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    openPost()
+  }
+
+  function handleCardClick(event: MouseEvent<HTMLElement>) {
+    if (variant !== 'feed' || isArticle) {
+      return
+    }
+
+    const target = event.target
+
+    if (
+      target instanceof Element
+      && target.closest('a, button, input, textarea, select, [role="dialog"]')
+    ) {
+      return
+    }
+
+    openPost()
+  }
+
+  function handleCommentClick() {
+    if (variant === 'feed') {
+      openPost(true)
+      return
+    }
+
+    scrollToCommentsSection()
+  }
+
   return (
-    <article className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
-      <header className="flex items-center gap-3">
+    <article
+      onClick={handleCardClick}
+      className={`w-full overflow-hidden border bg-[var(--color-card)] ${
+        isArticle
+          ? 'mx-auto max-w-[680px] rounded-[18px] border-[var(--color-border-soft)] shadow-[0_22px_55px_-48px_rgb(var(--shadow-color)/0.55)]'
+          : variant === 'detail'
+            ? 'max-w-[720px] rounded-[24px] border-[var(--color-border)] p-5 shadow-[0_28px_70px_-58px_rgb(var(--shadow-color)/0.55)] sm:p-6'
+            : 'max-w-[680px] cursor-pointer rounded-[18px] border-[var(--color-border)] p-4 sm:p-5'
+      }`}
+    >
+      <header className={`flex items-center gap-3 ${isArticle ? 'px-4 pb-4 pt-4 sm:px-5 sm:pt-5' : ''}`}>
         <NavLink
           to={authorProfilePath}
           aria-label={`View ${post.author.name}'s profile`}
@@ -420,7 +561,7 @@ function NormalPost({ post }: NormalPostProps) {
           />
         </NavLink>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <NavLink
             to={authorProfilePath}
             className="block truncate text-sm font-extrabold text-[var(--color-text)] transition hover:text-[var(--color-accent)]"
@@ -428,7 +569,19 @@ function NormalPost({ post }: NormalPostProps) {
             @{post.author.username}
           </NavLink>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-[var(--color-muted)]">
-            <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
+            {!isArticle && variant === 'feed' ? (
+              <NavLink
+                to={postPath}
+                state={isOpenedFromFeed ? { fromFeed: true, feedPath } : undefined}
+                onClick={handlePostLinkClick}
+                aria-label={`Open post by ${post.author.name}`}
+                className="rounded transition hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+              >
+                <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
+              </NavLink>
+            ) : (
+              <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
+            )}
             {isPostEdited(post) ? (
               <>
                 <span aria-hidden="true">·</span>
@@ -439,30 +592,149 @@ function NormalPost({ post }: NormalPostProps) {
         </div>
       </header>
 
-      <div className="mt-5">
-        {postType === 'article' && post.title.trim() ? (
-          <h2 className="text-xl font-extrabold leading-tight tracking-[-0.025em] text-[var(--color-text)] sm:text-2xl">
-            {post.title}
-          </h2>
-        ) : null}
-        {body ? (
-          <p
-            className={`whitespace-pre-wrap text-[0.95rem] leading-7 text-[var(--color-text)] sm:text-base ${
-              postType === 'article' && post.title.trim() ? 'mt-3 text-[var(--color-secondary)]' : ''
-            }`}
-          >
-            {body}
-          </p>
-        ) : null}
-      </div>
+      {isArticle ? (
+        <NavLink
+          to={postPath}
+          state={isOpenedFromFeed ? { fromFeed: true, feedPath } : undefined}
+          onClick={handlePostLinkClick}
+          className="group/article block border-y border-[var(--color-border)] bg-[var(--color-bg)]/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-accent)]"
+          aria-label={`Read article: ${interactionName}`}
+        >
+          {post.coverImage ? (
+            <div className="relative min-h-[360px] overflow-hidden sm:aspect-[16/9] sm:min-h-0">
+              <img
+                src={post.coverImage}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/article:scale-[1.02]"
+              />
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/48 to-black/10"
+                aria-hidden="true"
+              />
 
-      <PostMediaGrid media={media} />
+              <div className="relative flex min-h-[360px] items-end p-4 sm:absolute sm:inset-0 sm:min-h-0 sm:p-5">
+                <div className="mx-auto w-full max-w-[590px] rounded-2xl border border-white/15 bg-black/28 p-4 text-white shadow-lg shadow-black/15 backdrop-blur-[3px] sm:p-5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.66rem] font-extrabold uppercase tracking-[0.14em] text-white/78">
+                    <span className="inline-flex items-center gap-1.5 text-[var(--color-highlight)]">
+                      <BookOpenText aria-hidden="true" size={14} />
+                      Article
+                    </span>
+                    <span aria-hidden="true">/</span>
+                    <span>{primaryTopic}</span>
+                    <span aria-hidden="true">/</span>
+                    <span className="normal-case tracking-normal">
+                      {formatReadTime(post.readTime)}
+                    </span>
+                  </div>
 
-      <footer className="mt-5 border-t border-[var(--color-border)] pt-2">
+                  <h2 className="mt-3 font-reading text-[1.85rem] font-semibold leading-[1.03] tracking-[-0.025em] text-white transition group-hover/article:text-[var(--color-highlight)] sm:text-[2.25rem]">
+                    {post.title.trim() || 'Untitled article'}
+                  </h2>
+                  {body ? (
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/82 sm:text-[0.95rem]">
+                      {body}
+                    </p>
+                  ) : null}
+
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-extrabold text-white">
+                    Read article
+                    <ArrowUpRight
+                      aria-hidden="true"
+                      size={16}
+                      className="transition-transform group-hover/article:-translate-y-0.5 group-hover/article:translate-x-0.5"
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="px-4 py-5 sm:px-5 sm:py-6">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <BookOpenText aria-hidden="true" size={14} />
+                    Article
+                  </span>
+                  <span aria-hidden="true" className="text-[var(--color-border-soft)]">/</span>
+                  <span className="text-[var(--color-muted)]">{primaryTopic}</span>
+                  <span aria-hidden="true" className="text-[var(--color-border-soft)]">/</span>
+                  <span className="normal-case tracking-normal text-[var(--color-muted)]">
+                    {formatReadTime(post.readTime)}
+                  </span>
+                </div>
+
+                <h2 className="mt-3 max-w-[590px] font-reading text-[1.85rem] font-semibold leading-[1.05] tracking-[-0.025em] text-[var(--color-text)] transition group-hover/article:text-[var(--color-accent)] sm:text-[2.25rem]">
+                  {post.title.trim() || 'Untitled article'}
+                </h2>
+                {body ? (
+                  <p className="mt-3 max-w-[590px] text-sm leading-6 text-[var(--color-secondary)] sm:text-[0.95rem] sm:leading-7">
+                    {body}
+                  </p>
+                ) : null}
+
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-extrabold text-[var(--color-text)]">
+                  Read article
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    size={16}
+                    className="transition-transform group-hover/article:-translate-y-0.5 group-hover/article:translate-x-0.5"
+                  />
+                </span>
+              </div>
+
+              {post.quotePreview.trim() ? (
+                <blockquote className="mx-4 mb-4 border-l-2 border-[var(--color-accent)] bg-[var(--color-soft-accent)] px-4 py-3 font-reading text-lg font-medium leading-7 text-[var(--color-text)] sm:mx-5 sm:mb-5">
+                  “{post.quotePreview}”
+                </blockquote>
+              ) : null}
+            </>
+          )}
+        </NavLink>
+      ) : (
+        <>
+          <div className={isMixedNormalPost ? 'mt-4' : 'mt-5'}>
+            {body ? (
+              <p
+                className={`whitespace-pre-wrap text-[0.95rem] text-[var(--color-text)] ${
+                  isMixedNormalPost ? 'leading-6' : 'leading-7 sm:text-base'
+                } ${canCollapseBody && !isBodyExpanded ? 'line-clamp-3' : ''}`}
+              >
+                {body}
+              </p>
+            ) : null}
+            {canCollapseBody ? (
+              <button
+                type="button"
+                onClick={() => setIsBodyExpanded((currentValue) => !currentValue)}
+                aria-expanded={isBodyExpanded}
+                className="mt-1 text-sm font-bold text-[var(--color-accent)] transition hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+              >
+                {isBodyExpanded ? 'Show less' : 'Show more'}
+              </button>
+            ) : null}
+          </div>
+
+          <PostMediaGrid
+            media={media}
+            layout={post.mediaLayout}
+            compact={isMixedNormalPost && variant === 'feed'}
+          />
+        </>
+      )}
+
+      <footer
+        className={`${
+          isArticle
+            ? 'px-4 pb-3 pt-2 sm:px-5'
+            : `${isMixedNormalPost ? 'mt-4' : 'mt-5'} border-t border-[var(--color-border)] pt-2`
+        }`}
+      >
         <div
           className="flex flex-wrap items-center justify-start gap-1 sm:gap-2"
           role="group"
-          aria-label="Post actions"
+          aria-label={isArticle ? 'Article actions' : 'Post actions'}
         >
           <button
             type="button"
@@ -481,20 +753,14 @@ function NormalPost({ post }: NormalPostProps) {
 
           <button
             type="button"
-            onClick={() => setIsCommenting((currentValue) => !currentValue)}
-            className={`${actionStyles} ${
-              isCommenting
-                ? 'text-[var(--color-accent)] hover:text-[var(--color-accent)]'
-                : 'text-[var(--color-secondary)]'
-            }`}
-            aria-expanded={isCommenting}
-            aria-controls={commentFormId}
+            onClick={handleCommentClick}
+            className={`${actionStyles} text-[var(--color-secondary)]`}
+            aria-controls={variant === 'detail' ? 'comments' : undefined}
             aria-label={`Comment on ${interactionName}, ${commentCount} comments`}
           >
             <MessageCircle
               aria-hidden="true"
               size={19}
-              className={isCommenting ? 'fill-current' : ''}
             />
             <span className="text-xs font-bold tabular-nums">{commentCount}</span>
           </button>
@@ -542,38 +808,19 @@ function NormalPost({ post }: NormalPostProps) {
           </button>
         </div>
 
-        {isCommenting ? (
-          <form
-            id={commentFormId}
-            onSubmit={handleCommentSubmit}
-            className="mt-2 flex flex-col gap-2 rounded-xl bg-[var(--color-card-elevated)] p-3 sm:flex-row"
-          >
-            <label htmlFor={`comment-${post.id}`} className="sr-only">
-              Write a comment
-            </label>
-            <textarea
-              id={`comment-${post.id}`}
-              value={commentDraft}
-              onChange={(event) => setCommentDraft(event.target.value)}
-              rows={2}
-              autoFocus
-              placeholder="Write a comment…"
-              className="min-h-11 flex-1 resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-input)] px-3 py-2.5 text-sm leading-6 text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-soft-accent)]"
-            />
-            <button
-              type="submit"
-              disabled={!commentDraft.trim()}
-              className="min-h-11 rounded-xl bg-[var(--color-brand-panel)] px-4 text-sm font-bold text-[var(--color-on-brand)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Comment
-            </button>
-          </form>
-        ) : null}
-
         <p className="sr-only" aria-live="polite">
           {shareStatus}
         </p>
       </footer>
+
+      {variant === 'detail' ? (
+        <CommentsPanel
+          comments={[...localComments, ...getMockComments(post.id)]}
+          commentCount={commentCount}
+          onAddComment={handleAddComment}
+          onAddReply={handleAddReply}
+        />
+      ) : null}
     </article>
   )
 }

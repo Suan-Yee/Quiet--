@@ -1,48 +1,28 @@
-import { useCallback, useState } from 'react'
-import { ArrowRight, Bookmark, Heart, MessageCircle } from 'lucide-react'
-import { NavLink, useParams } from 'react-router'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, ArrowRight, Bookmark, Heart, MessageCircle } from 'lucide-react'
+import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
 import { buttonStyles } from '../components/common/buttonStyles'
 import EmptyState from '../components/common/EmptyState'
 import ArticleContent from '../components/post/ArticleContent'
-import CommentsPanel, { type CommentItem } from '../components/post/CommentsPanel'
+import CommentsPanel from '../components/post/CommentsPanel'
+import NormalPost from '../components/post/NormalPost'
 import TiptapContentRenderer from '../components/post/TiptapContentRenderer'
 import { mockArticleBlocks } from '../data/mockArticleDetails'
+import { getMockComments } from '../data/mockComments'
 import { mockPosts } from '../data/mockPosts'
 import type { MockPost } from '../types/post'
+import { scrollToCommentsSection } from '../utils/commentNavigation'
+import { getLocalComments, saveLocalComment } from '../utils/localComments'
+import type { CommentContent } from '../types/comment'
 import { getPostInteraction, savePostBookmark, savePostReaction } from '../utils/localInteractions'
 import { getLocalPosts } from '../utils/localPosts'
+import { getPostType } from '../utils/normalPost'
 import { formatPostDate, formatReadTime, getPrimaryTopic } from '../utils/postDisplay'
 import { getAuthorProfilePath } from '../utils/profileLinks'
-
-const mockComments: CommentItem[] = [
-  {
-    id: 'comment-1',
-    author: 'Nora Vale',
-    initials: 'NV',
-    body: 'This lands gently. The distinction between discipline and repeatable attention feels especially useful.',
-    time: '2 hours ago',
-    replies: [
-      {
-        id: 'comment-1-reply-1',
-        author: 'Maya Chen',
-        initials: 'MC',
-        body: 'Exactly. I keep coming back to systems that make the next sentence less dramatic.',
-        time: '1 hour ago',
-      },
-    ],
-  },
-  {
-    id: 'comment-2',
-    author: 'Theo Grant',
-    initials: 'TG',
-    body: 'The idea of protecting the emotional weather around the work is one I want to borrow.',
-    time: '45 minutes ago',
-    replies: [],
-  },
-]
+import { transitionToRoute } from '../utils/routeTransition'
 
 const actionButtonStyles =
-  'inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-card)]'
+  'inline-flex h-11 min-w-11 items-center gap-2 rounded-xl font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-card)]'
 
 type ReaderActionDockProps = {
   isLiked: boolean
@@ -72,17 +52,23 @@ function ReaderActionDock({
       aria-label="Article actions"
       className={
         mobile
-          ? 'flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-card)]/95 p-1.5 shadow-xl shadow-[rgb(var(--shadow-color)/0.16)] backdrop-blur'
-          : 'flex flex-col items-stretch gap-2'
+          ? 'flex items-center gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 p-1.5 shadow-xl shadow-[rgb(var(--shadow-color)/0.16)] backdrop-blur'
+          : 'w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-[0_18px_45px_-38px_rgb(var(--shadow-color)/0.45)]'
       }
       role="group"
     >
+      {!mobile ? (
+        <p className="px-2 pb-2 pt-1 text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+          Reader actions
+        </p>
+      ) : null}
+      <div className={mobile ? 'flex items-center gap-1' : 'space-y-1'}>
       <button
         type="button"
         onClick={onToggleLike}
-        className={`${actionButtonStyles} ${
-          mobile ? 'px-3' : 'flex-col px-2 py-2'
-        } ${isLiked ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'}`}
+        className={`${actionButtonStyles} ${mobile ? 'px-2 text-xs' : 'w-full justify-start px-3 text-sm'} ${
+          isLiked ? 'text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
+        }`}
         aria-pressed={isLiked}
         aria-label={isLiked ? `Remove love from ${postTitle}` : `Love ${postTitle}`}
       >
@@ -91,7 +77,8 @@ function ReaderActionDock({
           aria-hidden="true"
           className={isLiked ? 'fill-[var(--color-accent)]' : ''}
         />
-        <span className={mobile ? '' : 'text-[0.6875rem]'} aria-live="polite">
+        <span>Love</span>
+        <span className={mobile ? 'text-xs tabular-nums' : 'ml-auto text-xs tabular-nums'} aria-live="polite">
           {reactionCount}
         </span>
       </button>
@@ -99,22 +86,23 @@ function ReaderActionDock({
       <button
         type="button"
         onClick={onOpenDiscussion}
-        className={`${actionButtonStyles} ${
-          mobile ? 'px-3' : 'flex-col px-2 py-2'
-        } text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]`}
-        aria-label={`Open comments, ${commentCount} comments`}
-        aria-haspopup="dialog"
+        className={`${actionButtonStyles} ${mobile ? 'px-2 text-xs' : 'w-full justify-start px-3 text-sm'} text-[var(--color-secondary)] hover:text-[var(--color-text)]`}
+        aria-label={`Go to comments, ${commentCount} comments`}
+        aria-controls="comments"
       >
         <MessageCircle size={18} aria-hidden="true" />
-        <span className={mobile ? '' : 'text-[0.6875rem]'}>{commentCount}</span>
+        <span>Comments</span>
+        <span className={mobile ? 'text-xs tabular-nums' : 'ml-auto text-xs tabular-nums'}>
+          {commentCount}
+        </span>
       </button>
 
       <button
         type="button"
         onClick={onToggleBookmark}
-        className={`${actionButtonStyles} ${
-          mobile ? 'px-3' : 'flex-col px-2 py-2'
-        } ${isBookmarked ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'}`}
+        className={`${actionButtonStyles} ${mobile ? 'px-2 text-xs' : 'w-full justify-start px-3 text-sm'} ${
+          isBookmarked ? 'bg-[var(--color-soft-accent)] text-[var(--color-accent)]' : 'text-[var(--color-secondary)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)]'
+        }`}
         aria-pressed={isBookmarked}
         aria-label={isBookmarked ? `Remove bookmark for ${postTitle}` : `Bookmark ${postTitle}`}
       >
@@ -123,13 +111,19 @@ function ReaderActionDock({
           aria-hidden="true"
           className={isBookmarked ? 'fill-[var(--color-accent)]' : ''}
         />
-        <span className={mobile ? 'sr-only' : 'text-[0.6875rem]'}>Save</span>
+        <span>{isBookmarked ? 'Saved' : 'Save'}</span>
       </button>
+      </div>
     </div>
   )
 }
 
-function PostReader({ post }: { post: MockPost }) {
+type PostReaderProps = {
+  post: MockPost
+  onBackToFeed: () => void
+}
+
+function ArticleReader({ post, onBackToFeed }: PostReaderProps) {
   const [isLiked, setIsLiked] = useState(() => {
     const interaction = getPostInteraction(post.id)
     return interaction.isReacted ?? post.isReacted
@@ -138,13 +132,12 @@ function PostReader({ post }: { post: MockPost }) {
     const interaction = getPostInteraction(post.id)
     return interaction.isBookmarked ?? post.isBookmarked
   })
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false)
-  const [comments, setComments] = useState<CommentItem[]>(mockComments)
+  const [localComments, setLocalComments] = useState(() => getLocalComments(post.id))
 
   const reactionCount =
     post.reactionCount + (isLiked && !post.isReacted ? 1 : 0) - (!isLiked && post.isReacted ? 1 : 0)
-  const localCommentCount = comments.length - mockComments.length
-  const commentCount = post.commentCount + localCommentCount
+  const commentCount = post.commentCount + localComments.length
+  const comments = [...localComments, ...getMockComments(post.id)]
   const authorProfilePath = getAuthorProfilePath(post.author.name)
   const primaryTopic = getPrimaryTopic(post.topics)
   const hasRichContent = Boolean(post.contentJson?.content?.length)
@@ -165,21 +158,25 @@ function PostReader({ post }: { post: MockPost }) {
     })
   }, [post.id])
 
-  const handleOpenDiscussion = useCallback(() => setIsCommentsOpen(true), [])
-  const handleCloseDiscussion = useCallback(() => setIsCommentsOpen(false), [])
-  const handleAddComment = useCallback((body: string) => {
-    setComments((currentComments) => [
-      {
-        id: `local-comment-${Date.now()}`,
-        author: 'You',
-        initials: 'YO',
-        body,
-        time: 'Just now',
-        replies: [],
-      },
-      ...currentComments,
-    ])
+  const handleOpenDiscussion = useCallback(() => {
+    scrollToCommentsSection()
   }, [])
+  const handleAddComment = useCallback((content: CommentContent) => {
+    const comment = saveLocalComment(post.id, content)
+    setLocalComments((currentComments) => [comment, ...currentComments])
+  }, [post.id])
+  const handleAddReply = useCallback((
+    parentId: string,
+    content: CommentContent,
+    replyToId: string | null = null,
+  ) => {
+    const reply = saveLocalComment(post.id, {
+      ...content,
+      parentId,
+      replyToId,
+    })
+    setLocalComments((currentComments) => [reply, ...currentComments])
+  }, [post.id])
 
   const actionDockProps = {
     isLiked,
@@ -195,50 +192,52 @@ function PostReader({ post }: { post: MockPost }) {
   return (
     <div className="pb-28 lg:pb-20">
       <article>
-        <header className="relative overflow-hidden border-b border-[var(--color-border-soft)] bg-[var(--color-brand-panel)] text-[var(--color-on-brand)]">
-          <div
-            className="pointer-events-none absolute -right-24 -top-36 h-96 w-96 rounded-full bg-[var(--color-highlight)]/10 blur-3xl"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute -bottom-48 left-[8%] h-96 w-96 rounded-full bg-[var(--color-on-brand)]/5 blur-3xl"
-            aria-hidden="true"
-          />
-          <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8 lg:pb-20 lg:pt-20">
-            <div className="max-w-[930px]">
-              <div className="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-on-brand-muted)]">
-                <span className="text-[var(--color-highlight)]">Essay</span>
+        <header className="border-b border-[var(--color-border)] bg-[var(--color-card)]/72">
+          <div className="mx-auto w-full max-w-[960px] px-4 py-11 text-center sm:px-6 sm:py-14 lg:px-8 lg:py-16">
+            <div>
+              <div className="mb-8 flex justify-start">
+                <button
+                  type="button"
+                  onClick={onBackToFeed}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 text-sm font-extrabold text-[var(--color-text)] transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                >
+                  <ArrowLeft size={17} aria-hidden="true" />
+                  Back to feed
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.17em] text-[var(--color-muted)]">
+                <span className="text-[var(--color-accent)]">Article</span>
                 <span aria-hidden="true">•</span>
                 <span>{primaryTopic}</span>
               </div>
-              <h1 className="mt-6 max-w-[900px] break-words font-reading text-[clamp(2.75rem,7vw,6.25rem)] font-medium leading-[0.98] tracking-[-0.04em]">
+              <h1 className="mx-auto mt-5 max-w-[840px] break-words font-reading text-[clamp(2.6rem,6vw,5rem)] font-semibold leading-[1.01] tracking-[-0.035em] text-[var(--color-text)]">
                 {post.title}
               </h1>
-              <p className="mt-7 max-w-[760px] text-lg leading-8 text-[var(--color-on-brand-muted)] sm:text-xl sm:leading-9">
+              <p className="mx-auto mt-5 max-w-[700px] text-base leading-7 text-[var(--color-secondary)] sm:text-lg sm:leading-8">
                 {post.excerpt}
               </p>
 
-              <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-[var(--color-on-brand)]/15 pt-6">
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <NavLink
                   to={authorProfilePath}
-                  className="group inline-flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-highlight)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--color-brand-panel)]"
+                  className="group inline-flex items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                 >
                   <img
                     src={post.author.profileImage}
                     alt=""
-                    className="h-12 w-12 rounded-2xl object-cover ring-1 ring-[var(--color-on-brand)]/25 transition group-hover:ring-[var(--color-highlight)]"
+                    className="h-11 w-11 rounded-xl object-cover ring-1 ring-[var(--color-border)] transition group-hover:ring-[var(--color-accent)]"
                   />
                   <span>
-                    <span className="block text-sm font-bold text-[var(--color-on-brand)]">
+                    <span className="block text-sm font-extrabold text-[var(--color-text)]">
                       {post.author.name}
                     </span>
-                    <span className="mt-0.5 block text-xs text-[var(--color-on-brand-muted)]">
+                    <span className="mt-0.5 block text-xs text-[var(--color-muted)]">
                       {post.author.authorDescription}
                     </span>
                   </span>
                 </NavLink>
-                <span className="hidden h-8 w-px bg-[var(--color-on-brand)]/15 sm:block" aria-hidden="true" />
-                <p className="text-sm text-[var(--color-on-brand-muted)]">
+                <span className="hidden h-8 w-px bg-[var(--color-border)] sm:block" aria-hidden="true" />
+                <p className="text-xs font-semibold text-[var(--color-muted)] sm:text-sm">
                   <time dateTime={post.createdAt}>{formatPostDate(post.createdAt)}</time>
                   <span className="mx-2" aria-hidden="true">·</span>
                   {formatReadTime(post.readTime)}
@@ -249,21 +248,18 @@ function PostReader({ post }: { post: MockPost }) {
         </header>
 
         {post.coverImage ? (
-          <figure className="mx-auto -mt-px w-full max-w-[1280px] px-0 sm:px-6 lg:px-8">
+          <figure className="mx-auto w-full max-w-[900px] px-4 pt-7 sm:px-6 sm:pt-9 lg:px-8">
             <img
               src={post.coverImage}
               alt={`Cover image for ${post.title}`}
-              className="aspect-[16/8] max-h-[620px] w-full bg-[var(--color-card-elevated)] object-cover sm:rounded-b-[2rem]"
+              className="aspect-video w-full rounded-2xl object-cover shadow-[0_24px_65px_-50px_rgb(var(--shadow-color)/0.7)] sm:rounded-3xl"
             />
           </figure>
         ) : null}
 
-        <div className="mx-auto grid w-full max-w-[1100px] justify-center gap-8 px-4 sm:px-6 lg:grid-cols-[120px_minmax(0,720px)] lg:px-8 xl:grid-cols-[120px_minmax(0,720px)_120px] xl:gap-12">
+        <div className="mx-auto grid w-full max-w-[1160px] justify-center gap-8 px-4 sm:px-6 lg:grid-cols-[168px_minmax(0,720px)] lg:px-8 xl:grid-cols-[168px_minmax(0,720px)_120px] xl:gap-12">
           <aside className="hidden lg:block" aria-label="Article actions">
             <div className="sticky top-28 pt-14">
-              <p className="mb-4 text-center text-[0.65rem] font-bold uppercase tracking-[0.18em] text-[var(--color-muted)]">
-                Keep close
-              </p>
               <ReaderActionDock {...actionDockProps} />
             </div>
           </aside>
@@ -304,21 +300,21 @@ function PostReader({ post }: { post: MockPost }) {
               </p>
             </footer>
 
-            <div className="py-10 text-center">
-              <p className="font-reading text-2xl font-semibold text-[var(--color-text)]">
-                What stayed with you?
-              </p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-secondary)]">
-                Continue the piece in a thoughtful conversation with other readers.
-              </p>
+            <CommentsPanel
+              comments={comments}
+              commentCount={commentCount}
+              onAddComment={handleAddComment}
+              onAddReply={handleAddReply}
+            />
+
+            <div className="flex justify-center pb-9 pt-5">
               <button
                 type="button"
-                onClick={handleOpenDiscussion}
-                className={buttonStyles('primary', 'mt-5 gap-2')}
-                aria-haspopup="dialog"
+                onClick={onBackToFeed}
+                className={buttonStyles('secondary', 'gap-2')}
               >
-                Open the reading circle
-                <MessageCircle size={16} aria-hidden="true" />
+                <ArrowLeft size={16} aria-hidden="true" />
+                Back to feed
               </button>
             </div>
           </div>
@@ -341,22 +337,82 @@ function PostReader({ post }: { post: MockPost }) {
       <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 lg:hidden">
         <ReaderActionDock {...actionDockProps} mobile />
       </div>
+    </div>
+  )
+}
 
-      {isCommentsOpen ? (
-        <CommentsPanel
-          comments={comments}
-          commentCount={commentCount}
-          onClose={handleCloseDiscussion}
-          onAddComment={handleAddComment}
-        />
-      ) : null}
+function NormalPostReader({ post, onBackToFeed }: PostReaderProps) {
+  const accessibleTitle = post.title.trim() || `Post by ${post.author.name}`
+
+  return (
+    <div className="px-4 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-9">
+      <div className="mx-auto w-full max-w-[720px]">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={onBackToFeed}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 text-sm font-extrabold text-[var(--color-text)] transition hover:bg-[var(--color-card-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+          >
+            <ArrowLeft size={17} aria-hidden="true" />
+            Back to feed
+          </button>
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+            Post
+          </span>
+        </div>
+
+        <h1 className="sr-only">{accessibleTitle}</h1>
+        <NormalPost post={post} variant="detail" />
+      </div>
     </div>
   )
 }
 
 function PostDetailPage() {
   const { postId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const post = [...getLocalPosts(), ...mockPosts].find((item) => String(item.id) === postId)
+  const navigationState = location.state as {
+    fromFeed?: boolean
+    feedPath?: string
+    scrollToComments?: boolean
+  } | null
+
+  useEffect(() => {
+    if (!navigationState?.scrollToComments || !post) {
+      return
+    }
+
+    let scrollDelayId = 0
+    let firstFrameId = 0
+    let secondFrameId = 0
+
+    scrollDelayId = window.setTimeout(() => {
+      firstFrameId = window.requestAnimationFrame(() => {
+        secondFrameId = window.requestAnimationFrame(() => {
+          scrollToCommentsSection()
+        })
+      })
+    }, 320)
+
+    return () => {
+      window.clearTimeout(scrollDelayId)
+      window.cancelAnimationFrame(firstFrameId)
+      window.cancelAnimationFrame(secondFrameId)
+    }
+  }, [navigationState?.scrollToComments, post])
+
+  function handleBackToFeed() {
+    transitionToRoute(() => {
+      if (navigationState?.fromFeed) {
+        navigate(-1)
+        return
+      }
+
+      navigate(navigationState?.feedPath || '/')
+    })
+  }
 
   if (!post) {
     return (
@@ -364,7 +420,7 @@ function PostDetailPage() {
         <EmptyState
           eyebrow="Post not found"
           title="This post is not available"
-          description="The article may have moved, or the link may be incorrect. Return to discover another path."
+          description="The post may have moved, or the link may be incorrect. Return to discover another path."
           action={
             <NavLink to="/" className={buttonStyles('primary')}>
               Back to discover
@@ -375,7 +431,17 @@ function PostDetailPage() {
     )
   }
 
-  return <PostReader key={post.id} post={post} />
+  if (getPostType(post) === 'normal') {
+    return (
+      <NormalPostReader
+        key={post.id}
+        post={post}
+        onBackToFeed={handleBackToFeed}
+      />
+    )
+  }
+
+  return <ArticleReader key={post.id} post={post} onBackToFeed={handleBackToFeed} />
 }
 
 export default PostDetailPage

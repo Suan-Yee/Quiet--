@@ -1,6 +1,7 @@
 import type { MockPost, PostDraft } from '../types/post'
 
-const LOCAL_POSTS_KEY = 'quiet-pages-local-posts'
+export const LOCAL_POSTS_KEY = 'quiet-pages-local-posts'
+export const LOCAL_POSTS_CHANGED_EVENT = 'quiet-pages:local-posts-changed'
 const LOCAL_DRAFT_KEY = 'quiet-pages-local-draft'
 
 export function getLocalPosts(): MockPost[] {
@@ -20,6 +21,7 @@ export function getLocalPosts(): MockPost[] {
 export function saveLocalPost(post: MockPost) {
   const existingPosts = getLocalPosts().filter((item) => item.id !== post.id)
   window.localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify([post, ...existingPosts]))
+  window.dispatchEvent(new Event(LOCAL_POSTS_CHANGED_EVENT))
 }
 
 export function saveLocalDraft(draft: PostDraft) {

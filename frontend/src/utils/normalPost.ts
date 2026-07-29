@@ -15,7 +15,7 @@ export function isAcceptedPostMediaType(mimeType: string): mimeType is PostMedia
   return ACCEPTED_NORMAL_POST_MEDIA_TYPES.some((acceptedType) => acceptedType === mimeType)
 }
 
-export function validateNormalPostMedia(files: readonly Pick<File, 'type'>[]) {
+export function validateNormalPostMedia<T extends Pick<File, 'type'>>(files: readonly T[]) {
   const imageFiles = files.filter((file) => isAcceptedPostMediaType(file.type))
 
   return {
@@ -63,4 +63,13 @@ export function getPostBody(post: Pick<MockPost, 'postType' | 'contentText' | 'e
 
 export function isPostEdited(post: Pick<MockPost, 'editedAt'>) {
   return Boolean(post.editedAt)
+}
+
+export function shouldCollapsePostBody(body: string, hasMedia: boolean) {
+  const normalizedBody = body.trim()
+
+  return (
+    hasMedia
+    && (normalizedBody.length > 140 || /\n\s*\n/.test(normalizedBody))
+  )
 }

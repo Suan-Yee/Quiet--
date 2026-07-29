@@ -25,7 +25,7 @@ function Toast({ title, messages = [], variant = 'error', onClose }: ToastProps)
   return (
     <div
       aria-live={variant === 'error' ? 'assertive' : 'polite'}
-      className="fixed left-1/2 top-5 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 sm:top-6"
+      className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[120] sm:left-auto sm:right-6 sm:bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:w-full sm:max-w-md"
       role={variant === 'error' ? 'alert' : 'status'}
     >
       <div

@@ -95,6 +95,31 @@ Post cards:
 - Keep multi-image posts compact by showing four feed tiles and a `+N` lightbox entry for remaining media.
 - Clicking any post image opens the lightbox at that exact image; single images use the same viewer.
 - Use a translucent neutral lightbox overlay, restrained image sizing, and line-tab position indicators instead of numeric counters.
+- Image media may include an optional `label`; show it as a translucent bottom caption in feed tiles and the lightbox.
+
+Create post:
+- Open the create page in `Normal Post` mode by default; keep `Create Article` as the explicit long-form alternative.
+- A normal post may contain text, images, or both. Keep article-only title, excerpt, topic, and cover controls out of this mode.
+- Normal-post uploads must use the shared image/GIF allowlist, support file selection and drag-and-drop, reject video, and enforce the 10-image limit.
+- Use the large media drop zone only before the first image is attached. Collapse it to a compact `Add more images` row once media exists.
+- Record each uploaded image's intrinsic width and height. Preserve GIF data, and resize/compress still images before local demo persistence to reduce storage failures.
+- Image labels are optional and controlled by an explicit toggle. Preserve draft label text when the toggle is off, but do not publish or display it unless labels are enabled.
+- The normal-post preview is also the arrangement screen. Support desktop drag reordering plus visible move-earlier/move-later controls for keyboard, touch, and assistive-technology users.
+- Keep explicit `Back to editor` and `Publish post` actions persistently visible in the preview.
+- Keep every feed and preview media surface inside one compact responsive 16:9 outer frame. Only the internal grid may change; mobile scales the whole frame without changing its ratio.
+- One image uses the full frame with no layout selector.
+- Two images offer `side-by-side` and `stacked`.
+- Three images offer `portrait-strip`, `featured-left`, and `featured-top`; `featured-left` uses equal-width left and right columns.
+- Four images default to a 2 × 2 `grid`, with optional `featured-left` and `featured-top` layouts.
+- Five or more images always use the first four positions in a 2 × 2 grid and show `+N` over tile four.
+- Recommend side by side for two portraits, stacked for two landscapes, and stacked with the landscape first for mixed pairs.
+- For three portrait images, recommend `portrait-strip`. Otherwise recommend the widest landscape as the featured top tile, or feature the first image on the left.
+- Recommend the 2 × 2 grid for four or more images.
+- Let the author explicitly apply a recommendation. Applying it also moves the recommended image into position one when a featured slot is used.
+- Fill fixed feed and preview tiles with `object-cover` so layouts have no empty bands; keep the complete uncropped image available in the lightbox carousel.
+- Keep every feed and preview media frame left-aligned with a 640px maximum width, including single-image and image-only posts.
+- Keep Dashboard and preview post cards at a 680px maximum width so 20px desktop padding aligns exactly with the 640px media frame.
+- Keep mixed normal posts compact by clamping longer text to three lines with an accessible `Show more` control and using tighter vertical spacing.
 
 Use max-width containers.
 Avoid full-width stretched content on desktop.

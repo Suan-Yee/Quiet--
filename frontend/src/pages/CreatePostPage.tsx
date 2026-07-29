@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Clock3, FileText, X } from 'lucide-react'
+import { FileText, MessageSquareText, X } from 'lucide-react'
 import { useNavigate } from 'react-router'
-import RichTextEditor from '../components/post/RichTextEditor'
-import PublishingSettings from '../components/post/PublishingSettings'
-import PreviewModeSwitch, { type PreviewMode } from '../components/post/PreviewModeSwitch'
+import ArticleComposer from '../components/post/ArticleComposer'
 import ArticlePreview from '../components/post/ArticlePreview'
+import NormalPostComposer from '../components/post/NormalPostComposer'
+import PreviewModeSwitch, { type PreviewMode } from '../components/post/PreviewModeSwitch'
 import StudioCommandBar from '../components/post/StudioCommandBar'
 import Toast from '../components/common/Toast'
-import { emptyEditorContent } from '../data/mockTiptapContent'
 import { mockCurrentUser } from '../data/mockCurrentUser'
+import { emptyEditorContent } from '../data/mockTiptapContent'
 import { topics } from '../data/mockPosts'
-import type { MockPost, PostDraft, PostStatus, Topic } from '../types/post'
+import type { MockPost, PostDraft, PostStatus } from '../types/post'
 import { getLocalDraft, saveLocalDraft, saveLocalPost } from '../utils/localPosts'
-import { getPrimaryTopic } from '../utils/postDisplay'
+
+type CreateMode = 'normal' | 'article'
 
 type ToastState = {
   title: string
@@ -20,13 +21,51 @@ type ToastState = {
   variant: 'error' | 'success'
 }
 
-function CreatePostPage() {
-  const navigate = useNavigate()
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('card')
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [objectUrl, setObjectUrl] = useState('')
-  const [toast, setToast] = useState<ToastState | null>(null)
-  const [postDraft, setPostDraft] = useState<PostDraft>(() => getLocalDraft() ?? {
+function getContentText(draft: PostDraft) {
+  const textParts: string[] = []
+
+  function walk(node: unknown) {
+    if (!node || typeof node !== 'object') {
+      return
+    }
+
+    if ('text' in node && typeof node.text === 'string') {
+      textParts.push(node.text)
+    }
+
+    if ('content' in node && Array.isArray(node.content)) {
+      node.content.forEach(walk)
+    }
+  }
+
+  walk(draft.contentJson)
+
+  return textParts.join(' ')
+}
+
+function hasArticleContent(draft: PostDraft) {
+  return draft.contentJson.content?.some((node) => {
+    if (node.type === 'paragraph' || node.type === 'heading') {
+      return node.content?.some((childNode) => Boolean(childNode.text?.trim()))
+    }
+
+    return node.type !== 'paragraph'
+  })
+}
+
+function createArticleDraft(): PostDraft {
+  const storedDraft = getLocalDraft()
+
+  if (storedDraft && storedDraft.postType !== 'normal') {
+    return {
+      ...storedDraft,
+      postType: 'article',
+    }
+  }
+
+  const createdAt = new Date().toISOString()
+
+  return {
     id: 0,
     authorId: mockCurrentUser.id,
     postType: 'article',
@@ -44,21 +83,22 @@ function CreatePostPage() {
     bookmarkCount: 0,
     topics: [topics[0]],
     author: mockCurrentUser,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt,
+    updatedAt: createdAt,
     isReacted: false,
     isBookmarked: false,
     isFeatured: false,
     quotePreview: '',
-  })
+  }
+}
 
-  useEffect(() => {
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-  }, [objectUrl])
+function CreatePostPage() {
+  const navigate = useNavigate()
+  const [createMode, setCreateMode] = useState<CreateMode>('normal')
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('card')
+  const [isArticlePreviewOpen, setIsArticlePreviewOpen] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [articleDraft, setArticleDraft] = useState<PostDraft>(createArticleDraft)
 
   useEffect(() => {
     if (toast?.variant !== 'success') {
@@ -71,7 +111,7 @@ function CreatePostPage() {
   }, [toast])
 
   useEffect(() => {
-    if (!isPreviewOpen) {
+    if (!isArticlePreviewOpen) {
       return
     }
 
@@ -79,7 +119,7 @@ function CreatePostPage() {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setIsPreviewOpen(false)
+        setIsArticlePreviewOpen(false)
       }
     }
 
@@ -90,149 +130,69 @@ function CreatePostPage() {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isPreviewOpen])
+  }, [isArticlePreviewOpen])
 
-  function updateDraft(nextDraft: Partial<PostDraft>) {
+  function updateArticleDraft(nextDraft: Partial<PostDraft>) {
     setToast(null)
-    setPostDraft((currentDraft) => ({
+    setArticleDraft((currentDraft) => ({
       ...currentDraft,
       ...nextDraft,
+      postType: 'article',
     }))
   }
 
-  function handleCoverImageChange(file: File) {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl)
-    }
-
-    const url = URL.createObjectURL(file)
-
-    setObjectUrl(url)
-    updateDraft({ coverImage: url })
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        updateDraft({ coverImage: reader.result })
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function handleCoverImageRemove() {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl)
-    }
-
-    setObjectUrl('')
-    updateDraft({ coverImage: '' })
-  }
-
-  function hasArticleContent(draft: PostDraft) {
-    return draft.contentJson.content?.some((node) => {
-      if (node.type === 'paragraph') {
-        return node.content?.some((childNode) => Boolean(childNode.text?.trim()))
-      }
-
-      if (node.type === 'heading') {
-        return node.content?.some((childNode) => Boolean(childNode.text?.trim()))
-      }
-
-      return node.type !== 'paragraph'
-    })
-  }
-
-  function getContentText(draft: PostDraft) {
-    const textParts: string[] = []
-
-    function walk(node: unknown) {
-      if (!node || typeof node !== 'object') {
-        return
-      }
-
-      if ('text' in node && typeof node.text === 'string') {
-        textParts.push(node.text)
-      }
-
-      if ('content' in node && Array.isArray(node.content)) {
-        node.content.forEach(walk)
-      }
-    }
-
-    walk(draft.contentJson)
-
-    return textParts.join(' ')
-  }
-
-  function getTopicByName(topicName: string): Topic {
-    const existingTopic = topics.find((topic) => topic.name === topicName)
-
-    return existingTopic ?? {
-      id: Date.now(),
-      name: topicName,
-      slug: topicName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      postCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  }
-
-  function buildPostId() {
-    return Date.now()
-  }
-
-  function buildLocalPost(status: PostStatus): MockPost {
-    const wordCount = getContentText(postDraft).split(/\s+/).filter(Boolean).length
+  function buildArticlePost(status: PostStatus): MockPost {
+    const wordCount = getContentText(articleDraft).split(/\s+/).filter(Boolean).length
     const readMinutes = Math.max(1, Math.ceil(wordCount / 220))
-    const id = status === 'published' ? buildPostId() : postDraft.id
+    const id = status === 'published' ? Date.now() : articleDraft.id
 
     return {
       id,
-      authorId: postDraft.authorId,
-      author: postDraft.author,
-      postType: postDraft.postType ?? 'article',
-      title: postDraft.title.trim(),
-      excerpt: postDraft.excerpt.trim(),
-      contentText: getContentText(postDraft),
-      contentJson: postDraft.contentJson,
-      coverImage: postDraft.coverImage,
-      coverImagePublicId: postDraft.coverImagePublicId,
+      authorId: articleDraft.authorId,
+      author: articleDraft.author,
+      postType: 'article',
+      title: articleDraft.title.trim(),
+      excerpt: articleDraft.excerpt.trim(),
+      contentText: getContentText(articleDraft),
+      contentJson: articleDraft.contentJson,
+      coverImage: articleDraft.coverImage,
+      coverImagePublicId: articleDraft.coverImagePublicId,
       status,
-      visibility: postDraft.visibility,
+      visibility: articleDraft.visibility,
       readTime: readMinutes,
-      reactionCount: postDraft.reactionCount,
-      commentCount: postDraft.commentCount,
-      bookmarkCount: postDraft.bookmarkCount,
-      topics: postDraft.topics,
-      createdAt: postDraft.createdAt,
+      reactionCount: articleDraft.reactionCount,
+      commentCount: articleDraft.commentCount,
+      bookmarkCount: articleDraft.bookmarkCount,
+      topics: articleDraft.topics,
+      createdAt: articleDraft.createdAt,
       updatedAt: new Date().toISOString(),
-      isFeatured: postDraft.isFeatured,
-      quotePreview: postDraft.quotePreview,
-      isReacted: postDraft.isReacted,
-      isBookmarked: postDraft.isBookmarked,
+      isFeatured: articleDraft.isFeatured,
+      quotePreview: articleDraft.quotePreview,
+      isReacted: articleDraft.isReacted,
+      isBookmarked: articleDraft.isBookmarked,
     }
   }
 
-  function validateDraft() {
+  function validateArticleDraft() {
     const messages: string[] = []
 
-    if (!postDraft.title.trim()) {
+    if (!articleDraft.title.trim()) {
       messages.push('Add a title before publishing.')
     }
 
-    if (!postDraft.excerpt.trim()) {
+    if (!articleDraft.excerpt.trim()) {
       messages.push('Add a subtitle or excerpt before publishing.')
     }
 
-    if (!hasArticleContent(postDraft)) {
+    if (!hasArticleContent(articleDraft)) {
       messages.push('Write some article content before publishing.')
     }
 
     return messages
   }
 
-  function handlePublish() {
-    const messages = validateDraft()
+  function handleArticlePublish() {
+    const messages = validateArticleDraft()
 
     if (messages.length > 0) {
       setToast({
@@ -243,118 +203,125 @@ function CreatePostPage() {
       return
     }
 
-    const post = buildLocalPost('published')
+    const post = buildArticlePost('published')
     saveLocalPost(post)
-    saveLocalDraft({ ...postDraft, id: post.id, status: 'published', updatedAt: post.updatedAt })
+    saveLocalDraft({
+      ...articleDraft,
+      id: post.id,
+      status: 'published',
+      updatedAt: post.updatedAt,
+    })
     navigate(`/posts/${post.id}`)
   }
 
-  function handleSaveDraft() {
-    saveLocalDraft({ ...postDraft, status: 'draft', updatedAt: new Date().toISOString() })
+  function handleArticleSaveDraft() {
+    saveLocalDraft({
+      ...articleDraft,
+      status: 'draft',
+      updatedAt: new Date().toISOString(),
+    })
     setToast({
       title: 'Draft saved',
-      messages: ['Your draft is saved locally on this device.'],
+      messages: ['Your article draft is saved locally on this device.'],
       variant: 'success',
     })
   }
 
-  const contentWordCount = getContentText(postDraft).split(/\s+/).filter(Boolean).length
-  const estimatedReadTime = Math.max(1, Math.ceil(contentWordCount / 220))
-  const statusLabel = postDraft.status.charAt(0).toUpperCase() + postDraft.status.slice(1)
-
   return (
-    <div className="min-h-[calc(100svh-72px)] pb-28 lg:pb-16">
-      {toast ? (
-        <Toast
-          title={toast.title}
-          messages={toast.messages}
-          variant={toast.variant}
-          onClose={() => setToast(null)}
+    <div className="min-h-[calc(100svh-72px)]">
+      <section className="border-b border-[var(--color-border)] bg-[var(--color-card)]/80">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+          <div>
+            <p className="type-kicker">Create</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.035em] text-[var(--color-text)] sm:text-3xl">
+              Choose how you want to share
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-secondary)]">
+              Share a quick thought with images, or open the full writing room for a longer article.
+            </p>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Post type"
+            className="grid w-full gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-1.5 sm:w-auto sm:grid-cols-2"
+          >
+            <button
+              type="button"
+              role="tab"
+              id="normal-post-tab"
+              aria-selected={createMode === 'normal'}
+              aria-controls="normal-post-panel"
+              onClick={() => setCreateMode('normal')}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${
+                createMode === 'normal'
+                  ? 'bg-[var(--color-card)] text-[var(--color-accent)] shadow-sm'
+                  : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              <MessageSquareText aria-hidden="true" size={18} />
+              Normal Post
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="article-post-tab"
+              aria-selected={createMode === 'article'}
+              aria-controls="article-post-panel"
+              onClick={() => setCreateMode('article')}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${
+                createMode === 'article'
+                  ? 'bg-[var(--color-card)] text-[var(--color-accent)] shadow-sm'
+                  : 'text-[var(--color-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              <FileText aria-hidden="true" size={18} />
+              Create Article
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="normal-post-panel"
+        role="tabpanel"
+        aria-labelledby="normal-post-tab"
+        hidden={createMode !== 'normal'}
+      >
+        <NormalPostComposer />
+      </section>
+
+      <section
+        id="article-post-panel"
+        role="tabpanel"
+        aria-labelledby="article-post-tab"
+        hidden={createMode !== 'article'}
+        className="pb-28 lg:pb-16"
+      >
+        {toast ? (
+          <Toast
+            title={toast.title}
+            messages={toast.messages}
+            variant={toast.variant}
+            onClose={() => setToast(null)}
+          />
+        ) : null}
+
+        <StudioCommandBar
+          title={articleDraft.title}
+          status={articleDraft.status}
+          onPreview={() => setIsArticlePreviewOpen(true)}
+          onSaveDraft={handleArticleSaveDraft}
+          onPublish={handleArticlePublish}
         />
-      ) : null}
 
-      <StudioCommandBar
-        title={postDraft.title}
-        status={postDraft.status}
-        onPreview={() => setIsPreviewOpen(true)}
-        onSaveDraft={handleSaveDraft}
-        onPublish={handlePublish}
-      />
-
-      <div className="mx-auto grid w-full max-w-[1480px] gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:px-8">
-        <main className="min-w-0">
-          <section className="overflow-hidden rounded-[1.25rem] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_24px_70px_-48px_rgb(var(--shadow-color)/0.55)]">
-            <header className="px-5 pb-8 pt-6 sm:px-10 sm:pb-10 sm:pt-9 lg:px-14">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-[var(--color-muted)]">
-                  <FileText aria-hidden="true" size={14} />
-                  Document
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--color-secondary)]">
-                  <span className="rounded-lg bg-[var(--color-card-elevated)] px-2.5 py-1.5">
-                    {getPrimaryTopic(postDraft.topics)}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock3 aria-hidden="true" size={14} />
-                    {estimatedReadTime} min read
-                  </span>
-                  <span>{statusLabel}</span>
-                </div>
-              </div>
-
-            <input
-              value={postDraft.title}
-              onChange={(event) => updateDraft({ title: event.target.value })}
-              placeholder="Article title"
-              aria-label="Article title"
-              className="mt-8 w-full bg-transparent font-reading text-4xl font-medium leading-[1.05] tracking-[-0.035em] text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] sm:text-6xl"
-            />
-            <textarea
-              value={postDraft.excerpt}
-              onChange={(event) => updateDraft({ excerpt: event.target.value })}
-              rows={3}
-              placeholder="Add a subtitle that gives readers a reason to stay..."
-              aria-label="Article subtitle or excerpt"
-              className="mt-6 w-full resize-none bg-transparent text-lg leading-8 text-[var(--color-secondary)] outline-none placeholder:text-[var(--color-muted)] sm:text-xl"
-            />
-
-              <div className="mt-7 flex items-center justify-between gap-4 border-t border-[var(--color-border)] pt-5 text-xs font-semibold text-[var(--color-muted)]">
-                <span>Start with the thought. Shape the structure later.</span>
-                <span className="shrink-0">{contentWordCount} words</span>
-              </div>
-            </header>
-
-            <RichTextEditor
-              content={postDraft.contentJson}
-              onChange={(contentJson) => updateDraft({
-                contentJson,
-                contentText: getContentText({ ...postDraft, contentJson }),
-              })}
-            />
-          </section>
-
-          {import.meta.env.DEV ? (
-            <details className="theme-scrollbar mt-4 max-h-72 overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-xs text-[var(--color-secondary)]">
-              <summary className="cursor-pointer font-bold text-[var(--color-text)]">
-                Draft JSON
-              </summary>
-              <pre className="mt-4 whitespace-pre-wrap">{JSON.stringify(postDraft, null, 2)}</pre>
-            </details>
-          ) : null}
-        </main>
-
-        <PublishingSettings
-          status={postDraft.status}
-          topic={getPrimaryTopic(postDraft.topics)}
-          coverImage={postDraft.coverImage}
-          onStatusChange={(status) => updateDraft({ status })}
-          onTopicChange={(topic) => updateDraft({ topics: [getTopicByName(topic)] })}
-          onCoverImageChange={handleCoverImageChange}
-          onCoverImageRemove={handleCoverImageRemove}
+        <ArticleComposer
+          draft={articleDraft}
+          onDraftChange={updateArticleDraft}
         />
-      </div>
+      </section>
 
-      {isPreviewOpen ? (
+      {isArticlePreviewOpen ? (
         <div
           className="fixed inset-0 z-[80] flex flex-col bg-[var(--color-bg)]"
           role="dialog"
@@ -367,14 +334,14 @@ function CreatePostPage() {
                 Reader view
               </p>
               <h2 id="studio-preview-title" className="mt-1 truncate text-sm font-bold text-[var(--color-text)] sm:text-base">
-                {postDraft.title.trim() || 'Untitled draft'}
+                {articleDraft.title.trim() || 'Untitled draft'}
               </h2>
             </div>
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
               <PreviewModeSwitch value={previewMode} onChange={setPreviewMode} />
               <button
                 type="button"
-                onClick={() => setIsPreviewOpen(false)}
+                onClick={() => setIsArticlePreviewOpen(false)}
                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-secondary)] transition hover:border-[var(--color-border-soft)] hover:bg-[var(--color-card-elevated)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                 aria-label="Close preview"
               >
@@ -389,7 +356,7 @@ function CreatePostPage() {
                 previewMode === 'card' ? 'max-w-5xl' : 'max-w-[1080px]'
               }`}
             >
-              <ArticlePreview draft={postDraft} mode={previewMode} />
+              <ArticlePreview draft={articleDraft} mode={previewMode} />
             </div>
           </div>
         </div>

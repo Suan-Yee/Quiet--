@@ -30,6 +30,14 @@ export type PostVisibility = 'public' | 'private' | 'subscribers'
 
 export type PostType = 'article' | 'normal'
 
+export type PostMediaLayout =
+  | 'grid'
+  | 'side-by-side'
+  | 'stacked'
+  | 'portrait-strip'
+  | 'featured-left'
+  | 'featured-top'
+
 export type PostMediaMimeType =
   | 'image/avif'
   | 'image/gif'
@@ -42,6 +50,9 @@ export type PostMedia = {
   id: string
   url: string
   alt: string
+  label?: string
+  width?: number
+  height?: number
   mimeType: PostMediaMimeType
 }
 
@@ -55,6 +66,7 @@ export type Post = {
   contentText: string
   contentJson: JSONContent
   media?: PostMedia[]
+  mediaLayout?: PostMediaLayout
   coverImage: string
   coverImagePublicId: string
   status: PostStatus
@@ -87,6 +99,7 @@ export type PostDraft = {
   contentText: string
   contentJson: JSONContent
   media?: PostMedia[]
+  mediaLayout?: PostMediaLayout
   coverImage: string
   coverImagePublicId: string
   status: PostStatus

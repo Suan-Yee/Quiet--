@@ -109,18 +109,21 @@ export const mockPosts: MockPost[] = [
         id: 'maya-desk-1',
         url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80',
         alt: 'A notebook and pen on a light writing desk',
+        label: 'Morning pages',
         mimeType: 'image/jpeg',
       },
       {
         id: 'maya-desk-2',
         url: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80',
         alt: 'People working together around a table',
+        label: 'Shared workspace',
         mimeType: 'image/jpeg',
       },
       {
         id: 'maya-desk-3',
         url: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=900&q=80',
         alt: 'A laptop, notebook, and coffee arranged for a writing session',
+        label: 'My writing setup',
         mimeType: 'image/jpeg',
       },
       {
@@ -133,6 +136,7 @@ export const mockPosts: MockPost[] = [
         id: 'maya-desk-5',
         url: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=900&q=80',
         alt: 'Open books arranged on a quiet desk',
+        label: 'Books for this month',
         mimeType: 'image/jpeg',
       },
       {
@@ -145,6 +149,7 @@ export const mockPosts: MockPost[] = [
         id: 'maya-desk-7',
         url: 'https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=900&q=80',
         alt: 'A warm drink beside a notebook',
+        label: 'Current reading list',
         mimeType: 'image/jpeg',
       },
     ],
